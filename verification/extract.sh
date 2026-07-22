@@ -9,14 +9,13 @@
 #
 #   Rust --charon--> SlhVerify.llbc --aeneas--> gen/SlhVerify/*.lean
 #
-# PHASE-1 PRECONDITION (gate-0 finding, 2026-07-22): upstream models the
-# hash family as `crate::hashers::Hashers`, a struct of plain function
-# pointers, which Aeneas cannot translate (3 unique errors, the only
-# obstruction in the whole cone). Until the Aeneas-compat patch in
-# fips205-source replaces that struct with named opaque free functions
-# on the verify path (the curve25519-dalek-source sha512-shim pattern),
-# this script produces a PARTIAL model. Do not build proofs on a partial
-# model; check.sh stays non-green until extraction is clean.
+# HISTORY (gate-0 finding, resolved 2026-07-22): upstream models the hash
+# family as `crate::hashers::Hashers`, a struct of plain function pointers,
+# which Aeneas cannot translate. The compat patch in fips205-source
+# (>= 2d89ee3) provides the additive monomorphic verify_mono module whose
+# hash suite is reached through named free functions — this script roots
+# there, and charon + aeneas both exit 0. Regeneration is byte-identical
+# (verified against the committed gen/ during the 2026-07-22 audit).
 #
 # Usage:  ./extract.sh
 set -euo pipefail
@@ -46,4 +45,4 @@ echo "        NOT overwritten once they exist)"
 cd "$HERE"
 aeneas -backend lean -split-files -subdir SlhVerify -dest gen SlhVerify.llbc
 
-echo "Done. Now run ./check.sh (expect non-green until phase 1 lands)."
+echo "Done. Now run ./check.sh (Phase 1: the regenerated model must type-check)."
