@@ -87,10 +87,22 @@ axiom core.iter.adapters.take.Take.Insts.CoreIterTraitsIteratorIterator.next
     Source: '/rustc/library/core/src/iter/range.rs', lines 290:16-290:74
     Name pattern: [core::iter::range::{core::iter::range::Step<u32>}::backward_checked]
     Visibility: public -/
+-- DISCHARGED (2026-07-22, proof phase): Aeneas.Std ships a real `Step`
+-- instance only for `usize` (StepUsize); u32 ranges therefore extracted as
+-- opaque axioms. These are the FAITHFUL models of Rust's `impl Step for u32`
+-- (core/src/iter/range.rs), mirroring StepUsize: forward/backward via
+-- u32::try_from(n)-then-checked_{add,sub}; steps_between = saturating
+-- difference. Real defs, axiom-clean — so the range-loop cones (chain, and
+-- every layer above) carry no plumbing axiom, only the kernel three + the
+-- five hash oracles. NOT the deployed hash boundary; ordinary loop control.
 @[rust_fun
   "core::iter::range::{core::iter::range::Step<u32>}::backward_checked"]
-axiom U32.Insts.CoreIterRangeStep.backward_checked
-  : Std.U32 → Std.Usize → Result (Option Std.U32)
+def U32.Insts.CoreIterRangeStep.backward_checked
+  : Std.U32 → Std.Usize → Result (Option Std.U32) :=
+  fun start n =>
+    if h : n.val < 2 ^ 32 then
+      ok (Std.U32.checked_sub start (Std.U32.ofNatCore n.val (by omega)))
+    else ok none
 
 /-- [core::iter::range::{impl core::iter::range::Step for u32}::forward_checked]:
     Source: '/rustc/library/core/src/iter/range.rs', lines 282:16-282:73
@@ -98,16 +110,25 @@ axiom U32.Insts.CoreIterRangeStep.backward_checked
     Visibility: public -/
 @[rust_fun
   "core::iter::range::{core::iter::range::Step<u32>}::forward_checked"]
-axiom U32.Insts.CoreIterRangeStep.forward_checked
-  : Std.U32 → Std.Usize → Result (Option Std.U32)
+def U32.Insts.CoreIterRangeStep.forward_checked
+  : Std.U32 → Std.Usize → Result (Option Std.U32) :=
+  fun start n =>
+    if h : n.val < 2 ^ 32 then
+      ok (Std.U32.checked_add start (Std.U32.ofNatCore n.val (by omega)))
+    else ok none
 
 /-- [core::iter::range::{impl core::iter::range::Step for u32}::steps_between]:
     Source: '/rustc/library/core/src/iter/range.rs', lines 271:16-271:84
     Name pattern: [core::iter::range::{core::iter::range::Step<u32>}::steps_between]
     Visibility: public -/
 @[rust_fun "core::iter::range::{core::iter::range::Step<u32>}::steps_between"]
-axiom U32.Insts.CoreIterRangeStep.steps_between
-  : Std.U32 → Std.U32 → Result (Std.Usize × (Option Std.Usize))
+def U32.Insts.CoreIterRangeStep.steps_between
+  : Std.U32 → Std.U32 → Result (Std.Usize × (Option Std.Usize)) :=
+  fun start end_ =>
+    if h : start.val > end_.val then ok (0#usize, none)
+    else
+      let steps := Std.Usize.ofNatCore (end_.val - start.val) (by scalar_tac)
+      ok (steps, some steps)
 
 /-- [core::iter::traits::iterator::Iterator::take]:
     Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 1447:4-1449:20
