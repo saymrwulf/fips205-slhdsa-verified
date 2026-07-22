@@ -5,12 +5,26 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: SKELETON — NOTHING PROVEN YET
+## STATUS: MODEL EXTRACTED & TYPE-CHECKS — NOTHING PROVEN YET
 
-There are **zero certificates** in this repository. `verification/check.sh`
-exits non-green and says so. Every claim in this README below the line
-"What will be claimed" is a *plan*, not a result. (Honesty invariant H5:
-an honest gap outranks a hollow certificate.)
+There are still **zero certificates** in this repository. What phase 1
+established (2026-07-22):
+
+- the Aeneas-compat patch landed in the snapshot (an additive monomorphic
+  SHA2-128s verify module reached through a named hash-oracle boundary);
+- **charon and aeneas both exit 0** on the full verify cone — the gate-0
+  fn-pointer blocker is gone;
+- the extracted Lean model (`verification/gen/SlhVerify`, 62 defs, apex
+  `verify_mono.slh_verify_128s`) **type-checks under lean-guard**
+  (`verification/check.sh` Phase 1 is green);
+- fidelity of the monomorphic path is pinned by a differential test in the
+  snapshot that agrees with the deployed verifier on valid / corrupted /
+  wrong-message signatures.
+
+A green Phase-1 compile proves the model is **well-formed**, NOT that the
+verifier is correct. No operation theorem has been stated or proven. Every
+claim under "What will be claimed" remains a *plan* (H5: an honest gap
+outranks a hollow certificate).
 
 ## Subject
 
@@ -61,12 +75,18 @@ this repository was created:
   with exactly **one obstruction class** (3 unique errors): the
   `crate::hashers::Hashers` struct of plain **function pointers** cannot
   be translated.
-- **Consequence (campaign phase 1)**: an Aeneas-compat patch in
-  `fips205-source` will replace the fn-pointer struct with named opaque
-  free functions on the verify path — the same pattern as the
-  `sha512_new/update/finalize` shims in `curve25519-dalek-source`'s
-  verify glue. Until that patch lands, `verification/extract.sh`
-  documents intent and produces a partial model.
+- **Phase 1 — DONE (2026-07-22)**: the Aeneas-compat patch landed in
+  `fips205-source` (snapshot `2d89ee3`): an additive monomorphic SHA2-128s
+  verify module (`src/verify_mono.rs`) whose hash suite is reached through
+  named free functions in `verify_mono::oracle` (marked opaque at the
+  Charon boundary) — the `sha512_*`-shim pattern. Two further compat
+  refinements: the message-digest input M' passes as a single `&[u8]`
+  (nested `&[&[u8]]` is untranslatable), and one `let-else` became the
+  `is_err`/`unwrap` idiom. `verification/extract.sh` now re-derives the
+  model from the mono root; charon + aeneas both exit 0, and
+  `verification/check.sh` compiles the result. The generic paths and all
+  twelve parameter sets are untouched (the only change to existing code is
+  two lines wiring the module).
 
 ## What will be claimed (when the button is green, not before)
 

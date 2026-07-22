@@ -1,3 +1,5 @@
 *.olean
 target/
 .lake/
+*_Template.lean
+SlhVerify.llbc

@@ -25,20 +25,17 @@ source ~/aeneas-toolchain/env.sh
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CRATE=~/GitClone/FormalVerification/sources/fips205-source
 
-echo "[1/2] charon: Rust -> LLBC (verify cone, SHA2-128s, hash oracles opaque)"
+echo "[1/2] charon: Rust -> LLBC (monomorphic SHA2-128s verify cone;"
+echo "        crate::verify_mono::oracle is the opaque SHA-2 boundary)"
 cd "$CRATE"
+# Single extraction root: the monomorphic entry. The five hash primitives
+# are reached through crate::verify_mono::oracle, marked opaque here — this
+# is the deliberate SHA-2 trust boundary (documented in TRUSTED-BASE.md).
+# The generic Hashers fn-pointer path is NOT in this cone by construction.
 charon cargo --preset=aeneas \
-  --start-from 'crate::slh::slh_verify' \
-  --start-from 'crate::slh::slh_verify_internal' \
-  --start-from 'crate::fors::fors_pk_from_sig' \
-  --start-from 'crate::hypertree::ht_verify' \
-  --start-from 'crate::xmss::xmss_pk_from_sig' \
-  --start-from 'crate::wots::wots_pk_from_sig' \
-  --start-from 'crate::wots::chain' \
+  --start-from 'crate::verify_mono::slh_verify_128s' \
+  --opaque 'crate::verify_mono::oracle' \
   --opaque 'sha2' --opaque 'sha3' --opaque 'zeroize' --opaque 'rand_core' \
-  --opaque 'crate::hashers::sha2_cat_1' \
-  --opaque 'crate::hashers::sha2_cat_3_5' \
-  --opaque 'crate::hashers::shake' \
   --hide-marker-traits \
   --dest-file "$HERE/SlhVerify.llbc" \
   -- --no-default-features --features slh_dsa_sha2_128s
