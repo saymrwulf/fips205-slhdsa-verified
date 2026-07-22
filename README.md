@@ -92,12 +92,21 @@ this repository was created:
 ## What will be claimed (when the button is green, not before)
 
 One theorem per layer, each a statement about the **extracted** functions
-(H3), compiled by `verification/check.sh` with `#print axioms` reporting
-exactly `[propext, Classical.choice, Quot.sound]` (H1): chain semantics,
-WOTS+ pk recomputation, XMSS path recomputation, hypertree acceptance,
-FORS pk recomputation, and the apex — `slh_verify_internal` accepts iff
-the recomputed hypertree root equals the pinned public-key root, under
-the stated oracle boundary.
+(H3), compiled by `verification/check.sh` with a per-certificate
+`#print axioms` audit (H1): chain semantics, WOTS+ pk recomputation,
+XMSS path recomputation, hypertree acceptance, FORS pk recomputation,
+and the apex — `slh_verify_internal` accepts iff the recomputed
+hypertree root equals the pinned public-key root.
+
+**The allowed axiom set, stated precisely:** unlike the ed25519 field and
+scalar layers (whose cones are exactly `[propext, Classical.choice,
+Quot.sound]`), the hash oracles permeate *every* SLH-DSA layer — `chain`
+already calls `F`. So each certificate's cone may contain the three
+kernel axioms **plus at most the five named oracles**
+(`verify_mono.oracle.{h_msg, f, h, t_l, t_len}`) — and nothing else: the
+transpiler-plumbing axioms currently in `FunsExternal.lean` must be
+discharged before any certificate ships, and the audit fails the button
+if any of them (or anything unlisted) appears in a cone.
 
 ## Discipline
 
