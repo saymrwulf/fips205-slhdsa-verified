@@ -4,8 +4,8 @@
 # SCOPE: the SLH-DSA verify path, parameter set SLH-DSA-SHA2-128s
 #   roots: slh_verify(_internal), fors_pk_from_sig, ht_verify,
 #          xmss_pk_from_sig, wots_pk_from_sig, chain
-#   (sign/keygen are out of scope; the six hash oracles are opaque —
-#    see TRUSTED-BASE.md.)
+#   (sign/keygen are out of scope; the five verify-path hash oracles
+#    (h_msg, f, h, t_l, t_len) are opaque — see TRUSTED-BASE.md.)
 #
 #   Rust --charon--> SlhVerify.llbc --aeneas--> gen/SlhVerify/*.lean
 #

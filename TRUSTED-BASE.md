@@ -3,8 +3,9 @@
 Initial statement, written at skeleton time (nothing proven yet); this
 file is maintained as the campaign proceeds and is part of every claim.
 
-1. **The six hash oracles.** `h_msg, prf, f, h, t_l, t_len`
-   (SLH-DSA-SHA2-128s instantiations over SHA-256) are modeled as opaque
+1. **The five verify-path hash oracles.** `h_msg, f, h, t_l, t_len`
+   (SLH-DSA-SHA2-128s instantiations over SHA-256; `prf`/`prf_msg` are
+   sign-side only and do not appear in the cone) are modeled as opaque
    functions with assumed functional behavior. Their correctness against
    FIPS 180-4 is NOT proven here — the same standing boundary as SHA-512
    in the ed25519 apex. A collision or misimplementation inside the hash

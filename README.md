@@ -56,8 +56,9 @@ slh_verify -> slh_verify_internal
 ```
 
 Key generation and signing are out of scope (trusted base), exactly as
-ed25519 signing was. The six hash oracles (`h_msg, prf, f, h, t_l,
-t_len` — SHA-2 instantiations) are opaque external models with written
+ed25519 signing was. The five verify-path hash oracles (`h_msg, f, h,
+t_l, t_len` — SHA-2 instantiations; `prf`/`prf_msg` are sign-side only
+and never enter the cone) are opaque external models with written
 justifications, kept outside every certificate's dependency cone
 (honesty invariant H4); their semantics are the standing SHA-2 oracle
 boundary documented in [TRUSTED-BASE.md](TRUSTED-BASE.md).
