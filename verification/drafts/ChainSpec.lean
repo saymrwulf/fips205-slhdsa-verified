@@ -23,6 +23,11 @@
    dalek loop-spec pattern), which sidesteps the raw match/bind plumbing.
    Nothing here is claimed proven: this file carries sorries and lives in
    drafts/, never in Proofs/ or check.sh.
+
+   RECORD NOTE: commit a2d8e5f's message body lost one backticked fragment
+   to shell command-substitution (it reads "the let-pair  so"); the intended
+   text was: the let-pair (o,iter1) := (some start, {start:=w,end:=stop}).
+   This header is the authoritative technical record.
 -/
 import SlhVerify.Funs
 open Aeneas Aeneas.Std Result ControlFlow
