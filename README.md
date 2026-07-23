@@ -5,26 +5,33 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: MODEL EXTRACTED & TYPE-CHECKS — NOTHING PROVEN YET
+## STATUS: FIRST CERTIFICATE PROVEN — Algorithm 5 (chain)
 
-There are still **zero certificates** in this repository. What phase 1
-established (2026-07-22):
+`verification/check.sh` is **green** (exit 0): the model compiles, the
+proofs compile, and the axiom audit passes. **One certificate proven so
+far:**
 
-- the Aeneas-compat patch landed in the snapshot (an additive monomorphic
-  SHA2-128s verify module reached through a named hash-oracle boundary);
-- **charon and aeneas both exit 0** on the full verify cone — the gate-0
-  fn-pointer blocker is gone;
-- the extracted Lean model (`verification/gen/SlhVerify`, 62 defs, apex
-  `verify_mono.slh_verify_128s`) **type-checks under lean-guard**
-  (`verification/check.sh` Phase 1 is green);
-- fidelity of the monomorphic path is pinned by a differential test in the
-  snapshot that agrees with the deployed verifier on valid / corrupted /
-  wrong-message signatures.
+- **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
+  extracted `chain_free` loop equals the explicit s-fold hash chain, with
+  the hash address set to i, i+1, …, i+s−1 in turn. This rules out —
+  machine-checked, for the deployed monomorphic SHA2-128s verify path — an
+  off-by-one loop bound, a wrong address field, and wrong threading. Its
+  `#print axioms` cone is **exactly** `[propext, Classical.choice,
+  Quot.sound, verify_mono.oracle.f]` — the three kernel axioms plus the one
+  hash oracle it touches, and nothing else (no transpiler plumbing; the u32
+  range machinery was discharged with real definitions). check.sh Phase 3
+  fails the build if any certificate cone contains anything outside the
+  kernel three + the five documented SHA-2 oracles.
 
-A green Phase-1 compile proves the model is **well-formed**, NOT that the
-verifier is correct. No operation theorem has been stated or proven. Every
-claim under "What will be claimed" remains a *plan* (H5: an honest gap
-outranks a hollow certificate).
+Foundations behind this (2026-07-22/23): the Aeneas-compat patch (additive
+monomorphic verify module through a named oracle boundary; charon + aeneas
+exit 0); the u32 range-loop de-plumbing (faithful `Step` defs vs pinned
+rustc, axiom-clean); fidelity pinned by a differential test in the snapshot
+(valid / corrupted / wrong-message).
+
+The remaining layers (WOTS+ pk, XMSS path, hypertree, FORS, apex) are not
+yet proven — the pyramid rises one certificate at a time, each audited to
+the same boundary.
 
 ## Subject
 
