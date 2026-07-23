@@ -31,16 +31,6 @@ def U32.Insts.CoreIterRangeStep : core.iter.range.Step Std.U32 := {
   backward_checked := U32.Insts.CoreIterRangeStep.backward_checked
 }
 
-/-- Trait implementation: [core::num::error::{impl core::fmt::Debug for core::num::error::TryFromIntError}]
-    Source: '/rustc/library/core/src/num/error.rs', lines 9:9-9:14
-    Name pattern: [core::fmt::Debug<core::num::error::TryFromIntError>] -/
-@[reducible, rust_trait_impl
-  "core::fmt::Debug<core::num::error::TryFromIntError>"]
-def core.num.error.TryFromIntError.Insts.CoreFmtDebug : core.fmt.Debug
-  core.num.error.TryFromIntError := {
-  fmt := core.num.error.TryFromIntError.Insts.CoreFmtDebug.fmt
-}
-
 /-- Trait implementation: [zeroize::{impl zeroize::Zeroize for Z}]
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.0/src/lib.rs', lines 270:0-272:23
     Name pattern: [zeroize::Zeroize<@Z>] -/
@@ -633,40 +623,39 @@ def verify_mono.chain_free
   verify_mono.chain_free_loop { start := i, «end» := i1 } pk_seed adrs1 cap_x
 
 /-- [fips205::verify_mono::wots_pk_from_sig_free]: loop body 0:
-    Source: 'src/verify_mono.rs', lines 118:4-120:5 -/
+    Source: 'src/verify_mono.rs', lines 122:4-124:5 -/
 @[rust_loop_body]
 def verify_mono.wots_pk_from_sig_free_loop0.body
-  (iter : core.iter.adapters.take.Take (core.slice.iter.Iter Std.U32))
-  (csum : Std.U32) :
-  Result (ControlFlow ((core.iter.adapters.take.Take (core.slice.iter.Iter
-    Std.U32)) × Std.U32) Std.U32)
+  {LEN : Std.Usize} (msg : Array Std.U32 LEN)
+  (iter : core.ops.range.Range Std.Usize) (csum : Std.U32) :
+  Result (ControlFlow ((core.ops.range.Range Std.Usize) × Std.U32) Std.U32)
   := do
   let (o, iter1) ←
-    core.iter.adapters.take.Take.Insts.CoreIterTraitsIteratorIterator.next
-      (core.iter.traits.iterator.IteratorSliceIter Std.U32) iter
+    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
   match o with
   | none => ok (done csum)
-  | some item =>
-    let i ← W - 1#u32
-    let i1 ← U32.Insts.CoreOpsArithSubShared0U32U32.sub i item
-    let csum1 ← csum + i1
+  | some i =>
+    let i1 ← W - 1#u32
+    let i2 ← Array.index_usize msg i
+    let i3 ← i1 - i2
+    let csum1 ← csum + i3
     ok (cont (iter1, csum1))
 
 /-- [fips205::verify_mono::wots_pk_from_sig_free]: loop 0:
-    Source: 'src/verify_mono.rs', lines 118:4-120:5 -/
+    Source: 'src/verify_mono.rs', lines 122:4-124:5 -/
 @[rust_loop]
 def verify_mono.wots_pk_from_sig_free_loop0
-  (iter : core.iter.adapters.take.Take (core.slice.iter.Iter Std.U32))
-  (csum : Std.U32) :
+  {LEN : Std.Usize} (iter : core.ops.range.Range Std.Usize) (csum : Std.U32)
+  (msg : Array Std.U32 LEN) :
   Result Std.U32
   := do
   loop
-    (fun (iter1, csum1) => verify_mono.wots_pk_from_sig_free_loop0.body iter1
-      csum1)
+    (fun (iter1, csum1) => verify_mono.wots_pk_from_sig_free_loop0.body msg
+      iter1 csum1)
     (iter, csum)
 
 /-- [fips205::verify_mono::wots_pk_from_sig_free]: loop body 1:
-    Source: 'src/verify_mono.rs', lines 131:4-140:5 -/
+    Source: 'src/verify_mono.rs', lines 135:4-144:5 -/
 @[rust_loop_body]
 def verify_mono.wots_pk_from_sig_free_loop1.body
   {LEN : Std.Usize} {N : Std.Usize} (sig : types.WotsSig LEN N)
@@ -692,7 +681,7 @@ def verify_mono.wots_pk_from_sig_free_loop1.body
     ok (cont (iter1, adrs1, a2))
 
 /-- [fips205::verify_mono::wots_pk_from_sig_free]: loop 1:
-    Source: 'src/verify_mono.rs', lines 131:4-140:5 -/
+    Source: 'src/verify_mono.rs', lines 135:4-144:5 -/
 @[rust_loop]
 def verify_mono.wots_pk_from_sig_free_loop1
   {LEN : Std.Usize} {N : Std.Usize} (iter : core.ops.range.Range Std.Usize)
@@ -706,16 +695,13 @@ def verify_mono.wots_pk_from_sig_free_loop1
     (iter, adrs, tmp)
 
 /-- [fips205::verify_mono::wots_pk_from_sig_free]:
-    Source: 'src/verify_mono.rs', lines 107:0-147:1 -/
+    Source: 'src/verify_mono.rs', lines 107:0-151:1 -/
 def verify_mono.wots_pk_from_sig_free
   {LEN : Std.Usize} {N : Std.Usize} (sig : types.WotsSig LEN N)
   (m : Slice Std.U8) (pk_seed : Slice Std.U8) (adrs : types.Adrs) :
   Result (types.WotsPk N)
   := do
-  let r ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from N
-  let n32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r
+  let n32 ← lift (UScalar.cast .U32 N)
   let adrs1 ← types.Adrs.Insts.CoreCloneClone.clone adrs
   let a := Array.repeat N 0#u8
   let tmp := Array.repeat LEN a
@@ -728,38 +714,37 @@ def verify_mono.wots_pk_from_sig_free
       { start := 0#usize, «end» := i1 }
   let s1 ← helpers.base_2b m LGW i s
   let msg1 := index_mut_back s1
-  let s2 ← lift (Array.to_slice msg1)
-  let i2 ← core.slice.Slice.iter s2
-  let iter ← core.slice.iter.IteratorSliceIter.take i2 i1
-  let csum ← verify_mono.wots_pk_from_sig_free_loop0 iter 0#u32
-  let i3 ← LEN2 * LGW
-  let i4 ← lift (i3 &&& 7#u32)
-  let i5 ← 8#u32 - i4
-  let i6 ← lift (i5 &&& 7#u32)
-  let csum1 ← csum <<< i6
-  let i7 ← i3 + 7#u32
-  let i8 ← i7 / 8#u32
-  let a1 ← helpers.to_byte csum1 i8
-  let s3 ← lift (Array.to_slice a1)
-  let (s4, index_mut_back1) ←
+  let csum ←
+    verify_mono.wots_pk_from_sig_free_loop0 { start := 0#usize, «end» := i1 }
+      0#u32 msg1
+  let i2 ← LEN2 * LGW
+  let i3 ← lift (i2 &&& 7#u32)
+  let i4 ← 8#u32 - i3
+  let i5 ← lift (i4 &&& 7#u32)
+  let csum1 ← csum <<< i5
+  let i6 ← i2 + 7#u32
+  let i7 ← i6 / 8#u32
+  let a1 ← helpers.to_byte csum1 i7
+  let s2 ← lift (Array.to_slice a1)
+  let (s3, index_mut_back1) ←
     core.array.Array.index_mut (core.ops.index.IndexMutSlice
       (core.slice.index.SliceIndexRangeFromUsizeSlice Std.U32)) msg1
       { start := i1 }
-  let s5 ← helpers.base_2b s3 LGW LEN2 s4
-  let msg2 := index_mut_back1 s5
+  let s4 ← helpers.base_2b s2 LGW LEN2 s3
+  let msg2 := index_mut_back1 s4
   let (adrs2, tmp1) ←
     verify_mono.wots_pk_from_sig_free_loop1
       { start := 0#usize, «end» := LEN } sig pk_seed adrs1 tmp msg2
   let wotspk_adrs ← types.Adrs.Insts.CoreCloneClone.clone adrs2
   let wotspk_adrs1 ←
     helpers.Adrs.set_type_and_clear wotspk_adrs types.WOTS_PK
-  let i9 ← helpers.Adrs.get_key_pair_address adrs2
-  let wotspk_adrs2 ← helpers.Adrs.set_key_pair_address wotspk_adrs1 i9
+  let i8 ← helpers.Adrs.get_key_pair_address adrs2
+  let wotspk_adrs2 ← helpers.Adrs.set_key_pair_address wotspk_adrs1 i8
   let pk ← verify_mono.oracle.t_l pk_seed wotspk_adrs2 tmp1
   ok pk
 
 /-- [fips205::verify_mono::xmss_pk_from_sig_free]: loop body 0:
-    Source: 'src/verify_mono.rs', lines 169:4-181:5 -/
+    Source: 'src/verify_mono.rs', lines 173:4-185:5 -/
 @[rust_loop_body]
 def verify_mono.xmss_pk_from_sig_free_loop.body
   {HP : Std.Usize} {N : Std.Usize} (idx : Std.U32) (pk_seed : Slice Std.U8)
@@ -801,7 +786,7 @@ def verify_mono.xmss_pk_from_sig_free_loop.body
       ok (cont (iter1, adrs3, node_1))
 
 /-- [fips205::verify_mono::xmss_pk_from_sig_free]: loop 0:
-    Source: 'src/verify_mono.rs', lines 169:4-181:5 -/
+    Source: 'src/verify_mono.rs', lines 173:4-185:5 -/
 @[rust_loop]
 def verify_mono.xmss_pk_from_sig_free_loop
   {HP : Std.Usize} {N : Std.Usize} (iter : core.ops.range.Range Std.U32)
@@ -815,17 +800,14 @@ def verify_mono.xmss_pk_from_sig_free_loop
     (iter, adrs, node_0)
 
 /-- [fips205::verify_mono::xmss_pk_from_sig_free]:
-    Source: 'src/verify_mono.rs', lines 152:0-184:1 -/
+    Source: 'src/verify_mono.rs', lines 156:0-188:1 -/
 def verify_mono.xmss_pk_from_sig_free
   {HP : Std.Usize} {LEN : Std.Usize} {N : Std.Usize} (idx : Std.U32)
   (sig_xmss : types.XmssSig HP LEN N) (m : Slice Std.U8)
   (pk_seed : Slice Std.U8) (adrs : types.Adrs) :
   Result (Array Std.U8 N)
   := do
-  let r ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from HP
-  let hp32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r
+  let hp32 ← lift (UScalar.cast .U32 HP)
   let adrs1 ← types.Adrs.Insts.CoreCloneClone.clone adrs
   let adrs2 ← helpers.Adrs.set_type_and_clear adrs1 types.WOTS_HASH
   let adrs3 ← helpers.Adrs.set_key_pair_address adrs2 idx
@@ -838,90 +820,75 @@ def verify_mono.xmss_pk_from_sig_free
     idx pk_seed adrs5 auth wp
 
 /-- [fips205::verify_mono::ht_verify_free]: loop body 0:
-    Source: 'src/verify_mono.rs', lines 202:4-219:1 -/
+    Source: 'src/verify_mono.rs', lines 206:4-220:5 -/
 @[rust_loop_body]
 def verify_mono.ht_verify_free_loop.body
   {D : Std.Usize} {HP : Std.Usize} {LEN : Std.Usize} {N : Std.Usize}
   (a : Array (types.XmssSig HP LEN N) D) (pk_seed : Slice Std.U8)
-  (pk_root : Array Std.U8 N) (hp32 : Std.U32)
-  (iter : core.ops.range.Range Std.U32) (idx_tree : Std.U64)
+  (hp32 : Std.U32) (iter : core.ops.range.Range Std.U32) (idx_tree : Std.U64)
   (adrs : types.Adrs) (node : Array Std.U8 N) :
   Result (ControlFlow ((core.ops.range.Range Std.U32) × Std.U64 × types.Adrs
-    × (Array Std.U8 N)) Bool)
+    × (Array Std.U8 N)) (Array Std.U8 N))
   := do
   let (o, iter1) ←
     core.iter.range.IteratorRange.next U32.Insts.CoreIterRangeStep iter
   match o with
-  | none =>
-    let b ←
-      core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 node pk_root
-    ok (done b)
+  | none => ok (done node)
   | some j =>
     let i ← 1#u64 <<< hp32
     let i1 ← i - 1#u64
     let i2 ← lift (idx_tree &&& i1)
-    let idx_leaf ← U32.Insts.CoreConvertTryFromU64TryFromIntError.try_from i2
-    let b ← core.result.Result.is_err idx_leaf
-    if b
-    then ok (done false)
-    else
-      let idx_leaf1 ←
-        core.result.Result.unwrap
-          core.num.error.TryFromIntError.Insts.CoreFmtDebug idx_leaf
-      let idx_tree1 ← idx_tree >>> hp32
-      let adrs1 ← helpers.Adrs.set_layer_address adrs j
-      let adrs2 ← helpers.Adrs.set_tree_address adrs1 idx_tree1
-      let i3 ← lift (UScalar.cast .Usize j)
-      let xs ← Array.index_usize a i3
-      let sig_tmp ← types.XmssSig.Insts.CoreCloneClone.clone xs
-      let s ← lift (Array.to_slice node)
-      let node1 ←
-        verify_mono.xmss_pk_from_sig_free idx_leaf1 sig_tmp s pk_seed adrs2
-      ok (cont (iter1, idx_tree1, adrs2, node1))
+    let idx_leaf ← lift (UScalar.cast .U32 i2)
+    let idx_tree1 ← idx_tree >>> hp32
+    let adrs1 ← helpers.Adrs.set_layer_address adrs j
+    let adrs2 ← helpers.Adrs.set_tree_address adrs1 idx_tree1
+    let i3 ← lift (UScalar.cast .Usize j)
+    let xs ← Array.index_usize a i3
+    let sig_tmp ← types.XmssSig.Insts.CoreCloneClone.clone xs
+    let s ← lift (Array.to_slice node)
+    let node1 ←
+      verify_mono.xmss_pk_from_sig_free idx_leaf sig_tmp s pk_seed adrs2
+    ok (cont (iter1, idx_tree1, adrs2, node1))
 
 /-- [fips205::verify_mono::ht_verify_free]: loop 0:
-    Source: 'src/verify_mono.rs', lines 202:4-219:1 -/
+    Source: 'src/verify_mono.rs', lines 206:4-220:5 -/
 @[rust_loop]
 def verify_mono.ht_verify_free_loop
   {D : Std.Usize} {HP : Std.Usize} {LEN : Std.Usize} {N : Std.Usize}
   (iter : core.ops.range.Range Std.U32) (a : Array (types.XmssSig HP LEN N) D)
-  (pk_seed : Slice Std.U8) (pk_root : Array Std.U8 N) (idx_tree : Std.U64)
-  (hp32 : Std.U32) (adrs : types.Adrs) (node : Array Std.U8 N) :
-  Result Bool
+  (pk_seed : Slice Std.U8) (idx_tree : Std.U64) (hp32 : Std.U32)
+  (adrs : types.Adrs) (node : Array Std.U8 N) :
+  Result (Array Std.U8 N)
   := do
   loop
     (fun (iter1, idx_tree1, adrs1, node1) =>
-      verify_mono.ht_verify_free_loop.body a pk_seed pk_root hp32 iter1
-      idx_tree1 adrs1 node1)
+      verify_mono.ht_verify_free_loop.body a pk_seed hp32 iter1 idx_tree1 adrs1
+      node1)
     (iter, idx_tree, adrs, node)
 
 /-- [fips205::verify_mono::ht_verify_free]:
-    Source: 'src/verify_mono.rs', lines 189:0-219:1 -/
+    Source: 'src/verify_mono.rs', lines 193:0-223:1 -/
 def verify_mono.ht_verify_free
   {D : Std.Usize} {HP : Std.Usize} {LEN : Std.Usize} {N : Std.Usize}
   (m : Slice Std.U8) (sig_ht : types.HtSig D HP LEN N) (pk_seed : Slice Std.U8)
   (idx_tree : Std.U64) (idx_leaf : Std.U32) (pk_root : Array Std.U8 N) :
   Result Bool
   := do
-  let r ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from D
-  let d32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r
-  let r1 ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from HP
-  let hp32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r1
+  let d32 ← lift (UScalar.cast .U32 D)
+  let hp32 ← lift (UScalar.cast .U32 HP)
   let adrs ← types.Adrs.Insts.CoreDefaultDefault.default
   let adrs1 ← helpers.Adrs.set_tree_address adrs idx_tree
   let xs ← Array.index_usize sig_ht.xmss_sigs 0#usize
   let sig_tmp ← types.XmssSig.Insts.CoreCloneClone.clone xs
   let node ←
     verify_mono.xmss_pk_from_sig_free idx_leaf sig_tmp m pk_seed adrs1
-  verify_mono.ht_verify_free_loop { start := 1#u32, «end» := d32 }
-    sig_ht.xmss_sigs pk_seed pk_root idx_tree hp32 adrs1 node
+  let node1 ←
+    verify_mono.ht_verify_free_loop { start := 1#u32, «end» := d32 }
+      sig_ht.xmss_sigs pk_seed idx_tree hp32 adrs1 node
+  core.array.equality.PartialEqArray.eq core.cmp.PartialEqU8 node1 pk_root
 
 /-- [fips205::verify_mono::fors_pk_from_sig_free]: loop body 1:
-    Source: 'src/verify_mono.rs', lines 244:8-256:9 -/
+    Source: 'src/verify_mono.rs', lines 248:8-260:9 -/
 @[rust_loop_body]
 def verify_mono.fors_pk_from_sig_free_loop0_loop0.body
   {A : Std.Usize} {K : Std.Usize} {N : Std.Usize} (pk_seed : Slice Std.U8)
@@ -966,7 +933,7 @@ def verify_mono.fors_pk_from_sig_free_loop0_loop0.body
       ok (cont (iter1, adrs3, node_1))
 
 /-- [fips205::verify_mono::fors_pk_from_sig_free]: loop 1:
-    Source: 'src/verify_mono.rs', lines 244:8-256:9 -/
+    Source: 'src/verify_mono.rs', lines 248:8-260:9 -/
 @[rust_loop]
 def verify_mono.fors_pk_from_sig_free_loop0_loop0
   {A : Std.Usize} {K : Std.Usize} {N : Std.Usize}
@@ -982,7 +949,7 @@ def verify_mono.fors_pk_from_sig_free_loop0_loop0
     (iter, adrs, node_0)
 
 /-- [fips205::verify_mono::fors_pk_from_sig_free]: loop body 0:
-    Source: 'src/verify_mono.rs', lines 234:4-259:5 -/
+    Source: 'src/verify_mono.rs', lines 238:4-263:5 -/
 @[rust_loop_body]
 def verify_mono.fors_pk_from_sig_free_loop0.body
   {A : Std.Usize} {K : Std.Usize} {N : Std.Usize}
@@ -1018,7 +985,7 @@ def verify_mono.fors_pk_from_sig_free_loop0.body
     ok (cont (iter1, adrs3, a1))
 
 /-- [fips205::verify_mono::fors_pk_from_sig_free]: loop 0:
-    Source: 'src/verify_mono.rs', lines 234:4-259:5 -/
+    Source: 'src/verify_mono.rs', lines 238:4-263:5 -/
 @[rust_loop]
 def verify_mono.fors_pk_from_sig_free_loop0
   {A : Std.Usize} {K : Std.Usize} {N : Std.Usize}
@@ -1033,21 +1000,15 @@ def verify_mono.fors_pk_from_sig_free_loop0
     (iter, adrs, root)
 
 /-- [fips205::verify_mono::fors_pk_from_sig_free]:
-    Source: 'src/verify_mono.rs', lines 224:0-266:1 -/
+    Source: 'src/verify_mono.rs', lines 228:0-270:1 -/
 def verify_mono.fors_pk_from_sig_free
   {A : Std.Usize} {K : Std.Usize} {N : Std.Usize}
   (sig_fors : types.ForsSig A K N) (md : Slice Std.U8) (pk_seed : Slice Std.U8)
   (adrs : types.Adrs) :
   Result (types.ForsPk N)
   := do
-  let r ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from A
-  let a32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r
-  let r1 ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from K
-  let k32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r1
+  let a32 ← lift (UScalar.cast .U32 A)
+  let k32 ← lift (UScalar.cast .U32 K)
   let adrs1 ← types.Adrs.Insts.CoreCloneClone.clone adrs
   let indices := Array.repeat K 0#u32
   let (s, to_slice_mut_back) ← lift (Array.to_slice_mut indices)
@@ -1067,7 +1028,7 @@ def verify_mono.fors_pk_from_sig_free
   ok { key := pk }
 
 /-- [fips205::verify_mono::slh_verify_internal_free]:
-    Source: 'src/verify_mono.rs', lines 272:0-329:1 -/
+    Source: 'src/verify_mono.rs', lines 276:0-332:1 -/
 def verify_mono.slh_verify_internal_free
   {A : Std.Usize} {D : Std.Usize} (H : Std.Usize) {HP : Std.Usize} {K :
   Std.Usize} {LEN : Std.Usize} (M : Std.Usize) {N : Std.Usize}
@@ -1075,14 +1036,8 @@ def verify_mono.slh_verify_internal_free
   (pk : types.SlhPublicKey N) :
   Result Bool
   := do
-  let r ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from D
-  let d32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r
-  let r1 ← U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from H
-  let h32 ←
-    core.result.Result.unwrap core.num.error.TryFromIntError.Insts.CoreFmtDebug
-      r1
+  let d32 ← lift (UScalar.cast .U32 D)
+  let h32 ← lift (UScalar.cast .U32 H)
   let adrs ← types.Adrs.Insts.CoreDefaultDefault.default
   let s ← lift (Array.to_slice sig.randomness)
   let s1 ← lift (Array.to_slice pk.pk_seed)
@@ -1132,25 +1087,16 @@ def verify_mono.slh_verify_internal_free
   let idx_leaf ← lift (i22 &&& i24)
   let adrs1 ← helpers.Adrs.set_tree_address adrs idx_tree
   let adrs2 ← helpers.Adrs.set_type_and_clear adrs1 types.FORS_TREE
-  let idx_leaf_u32 ←
-    U32.Insts.CoreConvertTryFromU64TryFromIntError.try_from idx_leaf
-  let b ← core.result.Result.is_err idx_leaf_u32
-  if b
-  then ok false
-  else
-    let idx_leaf_u321 ←
-      core.result.Result.unwrap
-        core.num.error.TryFromIntError.Insts.CoreFmtDebug idx_leaf_u32
-    let adrs3 ← helpers.Adrs.set_key_pair_address adrs2 idx_leaf_u321
-    let s3 ← lift (Array.to_slice pk.pk_seed)
-    let pk_fors ← verify_mono.fors_pk_from_sig_free sig.fors_sig md s3 adrs3
-    let s4 ← lift (Array.to_slice pk_fors.key)
-    let s5 ← lift (Array.to_slice pk.pk_seed)
-    verify_mono.ht_verify_free s4 sig.ht_sig s5 idx_tree idx_leaf_u321
-      pk.pk_root
+  let idx_leaf_u32 ← lift (UScalar.cast .U32 idx_leaf)
+  let adrs3 ← helpers.Adrs.set_key_pair_address adrs2 idx_leaf_u32
+  let s3 ← lift (Array.to_slice pk.pk_seed)
+  let pk_fors ← verify_mono.fors_pk_from_sig_free sig.fors_sig md s3 adrs3
+  let s4 ← lift (Array.to_slice pk_fors.key)
+  let s5 ← lift (Array.to_slice pk.pk_seed)
+  verify_mono.ht_verify_free s4 sig.ht_sig s5 idx_tree idx_leaf_u32 pk.pk_root
 
 /-- [fips205::verify_mono::slh_verify_128s]:
-    Source: 'src/verify_mono.rs', lines 338:0-342:1 -/
+    Source: 'src/verify_mono.rs', lines 341:0-345:1 -/
 def verify_mono.slh_verify_128s
   (mprime : Slice Std.U8)
   (sig : types.SlhDsaSig 12#usize 7#usize 9#usize 14#usize 35#usize 16#usize)

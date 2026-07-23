@@ -5,10 +5,10 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: THREE CERTIFICATES PROVEN — chain (5) + WOTS+ loop (8) + XMSS path (10)
+## STATUS: FOUR CERTIFICATES PROVEN — chain (5), WOTS+ loop (8), XMSS path (10), hypertree (12)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. **Three certificates proven so
+proofs compile, and the axiom audit passes. **Four certificates proven so
 far, bottom-up:**
 
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
@@ -43,13 +43,30 @@ far, bottom-up:**
   certificate where H enters; F does not — the loop runs above the WOTS+
   computation).
 
+- **`fips205.ht_loop_eq`** (Algorithm 12, hypertree verification — the
+  layer walk): the extracted `ht_verify_free_loop` equals the fold that,
+  at layer j, splits the tree index (idx_leaf = idx_tree mod 2^h' by
+  mask+cast, then idx_tree >>= h'), sets the layer address to j and the
+  tree address to the shifted index, and recomputes the node through
+  `xmss_pk_from_sig` on the j-th XMSS signature. This pins the layer
+  schedule of hypertree verification; the final node = pk_root comparison
+  sits one bind above, in `ht_verify_free`, and belongs to the apex
+  composition. Cone: kernel three + `verify_mono.oracle.{f, h, t_l}` —
+  the full WOTS+/XMSS machinery referenced through the fold, and nothing
+  else.
+
 Foundations behind this (2026-07-22/23): the Aeneas-compat patch (additive
 monomorphic verify module through a named oracle boundary; charon + aeneas
 exit 0); the u32 range-loop de-plumbing (faithful `Step` defs vs pinned
-rustc, axiom-clean); fidelity pinned by a differential test in the snapshot
-(valid / corrupted / wrong-message).
+rustc, axiom-clean); the 8-site source de-plumbing (snapshot commit
+`6f6a9d6`: `try_from`/`is_err`/`unwrap` on pre-masked values → plain
+casts, the WOTS+ checksum `iter().take()` + `&u32` Sub → an index loop —
+each site semantics-identical for every FIPS 205 parameter set, and the
+obsoleted transpiler axioms deleted from the external files); fidelity
+pinned by a differential test in the snapshot (valid / corrupted /
+wrong-message), re-run green after every source patch.
 
-The remaining layers (hypertree, FORS, the WOTS+/XMSS input-prep plumbing,
+The remaining layers (FORS, the input-prep/digest-split composition,
 apex) are not yet proven — the pyramid rises one certificate at a time,
 each audited to the same boundary.
 

@@ -17,14 +17,17 @@
        axioms — nothing else.
 
    (2) TRANSPILER PLUMBING — core-library externals Aeneas emits for this
-       extraction config (u32::try_from, Result::is_err, the iterator Step /
-       Take machinery driving `for` ranges, the zeroize blanket impls, the
-       TryFromIntError Debug impl). These carry NO cryptographic content.
-       They are adopted here as axioms so the model type-checks at phase 1
-       (no certificates exist yet, so H4's cone requirement is vacuous). The
-       proof phase will discharge each from Aeneas.Std / real definitions and
-       the #print axioms audit will then confirm only class (1) survives in
-       any certificate cone. Tracked as the phase-2 de-plumbing item.
+       extraction config. These carry NO cryptographic content. The u32
+       range Step machinery is DISCHARGED below with real definitions
+       (2026-07-22). The try_from / is_err / &u32-Sub / wots-Take /
+       Debug-fmt axioms were ELIMINATED at source level by the
+       fips205-source de-plumbing patch (8 sites, semantics identical,
+       differential-test-validated) and their declarations deleted here
+       (dead-stub rule, 2026-07-23). Remaining as axioms: the Take
+       iterator machinery used by helpers::to_int (slh_verify_internal's
+       digest split — the apex round's de-plumbing item) and the zeroize
+       blanket impls (never on the verify path). The #print axioms audit
+       confirms only class (1) survives in any certificate cone.
    ────────────────────────────────────────────────────────────────────────────── -/
 -- This is a template file: rename it to "FunsExternal.lean" and fill the holes.
 import Aeneas
@@ -40,36 +43,6 @@ set_option maxHeartbeats 1000000
 /- You can set the `maxRecDepth` value with the `-max-recdepth` CLI option -/
 set_option maxRecDepth 2048
 open fips205
-
-/-- [core::convert::num::ptr_try_from_impls::{impl core::convert::TryFrom<usize, core::num::error::TryFromIntError> for u32}::try_from]:
-    Source: '/rustc/library/core/src/convert/num.rs', lines 300:12-300:64
-    Name pattern: [core::convert::num::ptr_try_from_impls::{core::convert::TryFrom<u32, usize, core::num::error::TryFromIntError>}::try_from]
-    Visibility: public -/
-@[rust_fun
-  "core::convert::num::ptr_try_from_impls::{core::convert::TryFrom<u32, usize, core::num::error::TryFromIntError>}::try_from"]
-axiom U32.Insts.CoreConvertTryFromUsizeTryFromIntError.try_from
-  :
-  Std.Usize → Result (core.result.Result Std.U32
-    core.num.error.TryFromIntError)
-
-/-- [core::convert::num::{impl core::convert::TryFrom<u64, core::num::error::TryFromIntError> for u32}::try_from]:
-    Source: '/rustc/library/core/src/convert/num.rs', lines 300:12-300:64
-    Name pattern: [core::convert::num::{core::convert::TryFrom<u32, u64, core::num::error::TryFromIntError>}::try_from]
-    Visibility: public -/
-@[rust_fun
-  "core::convert::num::{core::convert::TryFrom<u32, u64, core::num::error::TryFromIntError>}::try_from"]
-axiom U32.Insts.CoreConvertTryFromU64TryFromIntError.try_from
-  :
-  Std.U64 → Result (core.result.Result Std.U32
-    core.num.error.TryFromIntError)
-
-/-- [core::ops::arith::{impl core::ops::arith::Sub<&'_0 u32, u32> for u32}::sub]:
-    Source: '/rustc/library/core/src/internal_macros.rs', lines 38:12-38:68
-    Name pattern: [core::ops::arith::{core::ops::arith::Sub<u32, &'0 u32, u32>}::sub]
-    Visibility: public -/
-@[rust_fun "core::ops::arith::{core::ops::arith::Sub<u32, &'0 u32, u32>}::sub"]
-axiom U32.Insts.CoreOpsArithSubShared0U32U32.sub
-  : Std.U32 → Std.U32 → Result Std.U32
 
 /-- [core::iter::adapters::take::{impl core::iter::traits::iterator::Iterator<Clause0_Item> for core::iter::adapters::take::Take<I>}::next]:
     Source: '/rustc/library/core/src/iter/adapters/take.rs', lines 36:4-36:55
@@ -129,35 +102,6 @@ def U32.Insts.CoreIterRangeStep.steps_between
     else
       let steps := Std.Usize.ofNatCore (end_.val - start.val) (by scalar_tac)
       ok (steps, some steps)
-
-/-- [core::iter::traits::iterator::Iterator::take]:
-    Source: '/rustc/library/core/src/iter/traits/iterator.rs', lines 1447:4-1449:20
-    Name pattern: [core::iter::traits::iterator::Iterator::take]
-    Visibility: public -/
-@[rust_fun "core::iter::traits::iterator::Iterator::take"]
-axiom core.iter.traits.iterator.Iterator.take.default
-  {Self : Type} {Clause0_Item : Type} (IteratorInst :
-  core.iter.traits.iterator.Iterator Self Clause0_Item) :
-  Self → Std.Usize → Result (core.iter.adapters.take.Take Self)
-
-/-- [core::num::error::{impl core::fmt::Debug for core::num::error::TryFromIntError}::fmt]:
-    Source: '/rustc/library/core/src/num/error.rs', lines 9:9-9:14
-    Name pattern: [core::num::error::{core::fmt::Debug<core::num::error::TryFromIntError>}::fmt]
-    Visibility: public -/
-@[rust_fun
-  "core::num::error::{core::fmt::Debug<core::num::error::TryFromIntError>}::fmt"]
-axiom core.num.error.TryFromIntError.Insts.CoreFmtDebug.fmt
-  :
-  core.num.error.TryFromIntError → core.fmt.Formatter → Result
-    ((core.result.Result Unit core.fmt.Error) × core.fmt.Formatter)
-
-/-- [core::result::{core::result::Result<T, E>}::is_err]:
-    Source: '/rustc/library/core/src/result.rs', lines 646:4-646:38
-    Name pattern: [core::result::{core::result::Result<@T, @E>}::is_err]
-    Visibility: public -/
-@[rust_fun "core::result::{core::result::Result<@T, @E>}::is_err"]
-axiom core.result.Result.is_err
-  {T : Type} {E : Type} : core.result.Result T E → Result Bool
 
 /-- [zeroize::{impl zeroize::Zeroize for Z}::zeroize]:
     Source: '/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zeroize-1.9.0/src/lib.rs', lines 274:4-274:25
