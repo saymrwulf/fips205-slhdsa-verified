@@ -5,11 +5,11 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: FOUR CERTIFICATES PROVEN — chain (5), WOTS+ loop (8), XMSS path (10), hypertree (12)
+## STATUS: FIVE LAYERS PROVEN — chain (5), WOTS+ loop (8), XMSS (10), hypertree (12), FORS (17)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. **Four certificates proven so
-far, bottom-up:**
+proofs compile, and the axiom audit passes. **Six theorems across five
+verify-path layers, proven bottom-up:**
 
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
   extracted `chain_free` loop equals the explicit s-fold hash chain, with
@@ -66,9 +66,20 @@ obsoleted transpiler axioms deleted from the external files); fidelity
 pinned by a differential test in the snapshot (valid / corrupted /
 wrong-message), re-run green after every source patch.
 
-The remaining layers (FORS, the input-prep/digest-split composition,
-apex) are not yet proven — the pyramid rises one certificate at a time,
-each audited to the same boundary.
+- **`fips205.fors_inner_loop_eq`** + **`fips205.fors_outer_loop_eq`**
+  (Algorithm 17, FORS pk-from-sig): a nested loop, split into two theorems.
+  The inner one pins the auth-path Merkle fold for a single FORS tree (bit
+  source `indices[i] >> j`, `H` in the even/odd sibling order) — cone
+  kernel-3 + `oracle.h`. The outer one pins the K-tree fold: for each tree
+  compute the leaf with `F` at index `(i<<a)+indices[i]`, run the inner
+  Merkle loop, write `root[i]` — cone kernel-3 + `oracle.{f, h}`. Split into
+  two files under the memory discipline; the outer step lemma closes by
+  peeling its 16-bind body with `bind_congr` (a bare `rfl` there whnf-times-
+  out over the nested inner `loop`).
+
+The remaining layers (the input-prep/digest-split composition and the apex)
+are not yet proven — the pyramid rises one certificate at a time, each
+audited to the same boundary.
 
 ## Subject
 
