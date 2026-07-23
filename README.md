@@ -5,7 +5,7 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: FIRST CERTIFICATE PROVEN — Algorithm 5 (chain)
+## STATUS: TWO CERTIFICATES PROVEN — chain (Alg 5) + WOTS+ chain loop (Alg 8)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
 proofs compile, and the axiom audit passes. **One certificate proven so
@@ -22,6 +22,14 @@ far:**
   range machinery was discharged with real definitions). check.sh Phase 3
   fails the build if any certificate cone contains anything outside the
   kernel three + the five documented SHA-2 oracles.
+
+- **`fips205.wots_loop1_eq`** (Algorithm 8, WOTS+ pk recomputation — the
+  chain loop): the extracted `wots_pk_from_sig_free_loop1` equals the fold
+  that, at each index i in [0, LEN), sets the chain address to i and runs
+  `chain_free` on sig[i] starting at digit msg[i] for W−1−msg[i] steps,
+  writing tmp[i]. This is the layer above chain: it consumes `chain_free`
+  and pins that the LEN chains run with the right start indices, step
+  counts, and slots. Cone: kernel three + `verify_mono.oracle.f`.
 
 Foundations behind this (2026-07-22/23): the Aeneas-compat patch (additive
 monomorphic verify module through a named oracle boundary; charon + aeneas

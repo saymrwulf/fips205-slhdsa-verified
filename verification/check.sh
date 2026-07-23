@@ -25,12 +25,14 @@ GEN_MODULES=(
 # Proof files, in dependency order.
 PROOFS=(
   "ChainSpec"
+  "WotsSpec"
 )
 # Certificates whose axiom cones are audited, and the allowed extras beyond
 # the three kernel axioms: the five SHA-2 verify-path oracles. A certificate
 # is listed here only once it is genuinely proven.
 CERTS=(
   "fips205.chain_free_loop_eq"
+  "fips205.wots_loop1_eq"
 )
 ORACLES="verify_mono.oracle.f, verify_mono.oracle.h, verify_mono.oracle.t_l, verify_mono.oracle.t_len, verify_mono.oracle.h_msg"
 ALLOWED="[propext, Classical.choice, Quot.sound, ${ORACLES}]"
@@ -66,7 +68,7 @@ lake env bash -c "
 echo "=== Phase 3: axiom audit (cone ⊆ kernel-3 + 5 oracles) ==="
 cd "$AENEAS_LEAN"
 AUD="$HERE/Proofs/.audit.lean"
-{ echo "import Proofs.ChainSpec"
+{ echo "import Proofs.ChainSpec"; echo "import Proofs.WotsSpec"
   for c in "${CERTS[@]}"; do echo "#print axioms $c"; done
 } > "$AUD"
 OUT=$(lake env bash -c "cd '$HERE' && export LEAN_PATH=\"\$LEAN_PATH:\$PWD/gen:\$PWD\" && LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' 'Proofs/.audit.lean'" 2>&1)
