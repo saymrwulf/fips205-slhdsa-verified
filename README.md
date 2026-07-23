@@ -5,10 +5,10 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: TWO CERTIFICATES PROVEN — chain (Alg 5) + WOTS+ chain loop (Alg 8)
+## STATUS: THREE CERTIFICATES PROVEN — chain (5) + WOTS+ loop (8) + XMSS path (10)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. **Two certificates proven so
+proofs compile, and the axiom audit passes. **Three certificates proven so
 far, bottom-up:**
 
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
@@ -31,15 +31,27 @@ far, bottom-up:**
   and pins that the LEN chains run with the right start indices, step
   counts, and slots. Cone: kernel three + `verify_mono.oracle.f`.
 
+- **`fips205.xmss_loop_eq`** (Algorithm 10, XMSS pk-from-sig — the
+  authentication-path Merkle loop): the extracted
+  `xmss_pk_from_sig_free_loop` equals the fold that, at step k, sets the
+  tree height to k+1, tests bit k of the leaf index, and on an even bit
+  halves the tree index and hashes H(node ∥ auth[k]), on an odd bit sets
+  the tree index to (i−1)/2 and hashes H(auth[k] ∥ node). This pins the
+  Merkle sibling ORDER (the even/odd rule), the tree-height/tree-index
+  address schedule, and the auth-path indexing — the heart of Merkle-path
+  verification. Cone: kernel three + `verify_mono.oracle.h` (the first
+  certificate where H enters; F does not — the loop runs above the WOTS+
+  computation).
+
 Foundations behind this (2026-07-22/23): the Aeneas-compat patch (additive
 monomorphic verify module through a named oracle boundary; charon + aeneas
 exit 0); the u32 range-loop de-plumbing (faithful `Step` defs vs pinned
 rustc, axiom-clean); fidelity pinned by a differential test in the snapshot
 (valid / corrupted / wrong-message).
 
-The remaining layers (WOTS+ pk, XMSS path, hypertree, FORS, apex) are not
-yet proven — the pyramid rises one certificate at a time, each audited to
-the same boundary.
+The remaining layers (hypertree, FORS, the WOTS+/XMSS input-prep plumbing,
+apex) are not yet proven — the pyramid rises one certificate at a time,
+each audited to the same boundary.
 
 ## Subject
 
