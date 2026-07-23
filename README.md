@@ -8,8 +8,8 @@ four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 ## STATUS: TWO CERTIFICATES PROVEN — chain (Alg 5) + WOTS+ chain loop (Alg 8)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. **One certificate proven so
-far:**
+proofs compile, and the axiom audit passes. **Two certificates proven so
+far, bottom-up:**
 
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
   extracted `chain_free` loop equals the explicit s-fold hash chain, with
