@@ -37,10 +37,15 @@ EOF
 python3 - <<'PY'
 s = open("check.sh").read()
 s = s.replace('PROOFS=(\n  "ChainSpec"\n)', 'PROOFS=(\n  "ChainSpec"\n  "EvilSpec"\n)')
-s = s.replace('CERTS=(\n  "fips205.chain_free_loop_eq"\n)',
-              'CERTS=(\n  "fips205.chain_free_loop_eq"\n  "evil_thm"\n)')
+# Robust to the growing PROOFS / CERTS lists (do NOT hard-code their current
+# contents — that rots the self-test as certificates are added): inject the
+# evil entries right after each array's opening paren.
+assert 'PROOFS=(\n' in s and 'CERTS=(\n' in s, "check.sh array shape changed"
+s = s.replace('PROOFS=(\n', 'PROOFS=(\n  "EvilSpec"\n', 1)
+s = s.replace('CERTS=(\n', 'CERTS=(\n  "evil_thm"\n', 1)
+assert '{ echo "import Proofs.ChainSpec"' in s, "check.sh audit import shape changed"
 s = s.replace('{ echo "import Proofs.ChainSpec"',
-              '{ echo "import Proofs.ChainSpec"; echo "import Proofs.EvilSpec"')
+              '{ echo "import Proofs.EvilSpec"; echo "import Proofs.ChainSpec"', 1)
 open("check-evil-tmp.sh","w").write(s)
 PY
 chmod +x check-evil-tmp.sh
