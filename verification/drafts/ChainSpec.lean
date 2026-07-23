@@ -19,7 +19,18 @@ namespace fips205
 /-- The mathematical chaining fold, threading the address exactly as the
     extracted body does: at each step set the hash address to the current
     index, hash, advance the index (monadically, matching the u32 range
-    iterator's `forward_checked`). Recursion on the step count. -/
+    iterator's `forward_checked`). Recursion on the step count.
+
+    EFFECT-ORDER NOTE (audited 2026-07-23): the extracted loop increments the
+    index FIRST (inside `IteratorRange.next`, via `forward_checked`, failing
+    with `.panic` on overflow BEFORE any oracle call), while this fold hashes
+    first and increments AFTER (failing with the add's overflow error). The
+    two therefore agree only where neither increment can fail — which is
+    exactly what the theorem's precondition `start.val + s < 2^32` provides
+    (it makes every intermediate index < 2^32, so `forward_checked` always
+    yields `some` and `start + 1#u32` always succeeds). The step-case proof
+    must discharge BOTH monadic increments from that bound; do not weaken the
+    precondition. -/
 noncomputable def chainFoldN {N : Std.Usize} (pk_seed : Slice Std.U8) :
     types.Adrs → Array Std.U8 N → Std.U32 → Nat → Result (Array Std.U8 N)
   | _, tmp, _, 0 => ok tmp
