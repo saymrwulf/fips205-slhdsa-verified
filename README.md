@@ -5,13 +5,22 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: SIX LAYERS PROVEN — chain (5), WOTS+ (8), XMSS (10), hypertree (12), FORS (17), input-prep (2/3/4)
+## STATUS: THE APEX IS PROVEN — the verify-path pyramid is complete (11 certificates)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. **Ten theorems across six
-verify-path layers, proven bottom-up. After de-plumbing round 2 the model
-carries no plumbing axioms on the verify path — its external surface is
-exactly the five SHA-2 oracles (plus off-path zeroize impls).**
+proofs compile, and the axiom audit passes. **Eleven theorems across seven
+layers — chain (5), WOTS+ (8), XMSS (10), hypertree (12), FORS (17),
+input-prep (2/3/4), and the apex (20): `fips205.slh_verify_128s_accepts_iff`
+— the deployed SLH-DSA-SHA2-128s verifier returns `ok true` if and only if
+the recomputed hypertree root byte-equals the pinned public-key root. Its
+`#print axioms` cone is exactly `[propext, Classical.choice, Quot.sound]`
+plus the five SHA-2 oracles, nothing else. Honest scope: the apex is an
+acceptance characterization (accept = root equality over the extracted
+recomputation, whose every loop is individually fidelity-certified by the
+ten preceding theorems); it does not restate the recomputation as a
+closed-form mathematical hypertree value. After de-plumbing rounds 1+2 the
+model carries no plumbing axioms on the verify path — its external surface
+is exactly the five SHA-2 oracles (plus off-path zeroize impls).**
 
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
   extracted `chain_free` loop equals the explicit s-fold hash chain, with
