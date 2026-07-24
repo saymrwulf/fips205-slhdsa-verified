@@ -90,7 +90,8 @@ fi
 # ── Guard 3: preflight headroom (after lock: serialized measurement) ────────
 AVAIL_MB=$(free -m | awk '/Mem:/{print $7}')
 if [ "$AVAIL_MB" -lt "$MIN_FREE_MB" ]; then
-    echo "FATAL: only ${AVAIL_MB}MB available (< ${MIN_FREE_MB}MB floor) — refusing to compile"
+    # >&2: callers (check.sh) pipe stdout to /dev/null — diagnostics must survive
+    echo "FATAL: only ${AVAIL_MB}MB available (< ${MIN_FREE_MB}MB floor) — refusing to compile" >&2
     exit 1
 fi
 
@@ -106,13 +107,18 @@ REQ_MEM_MB=$MEM_MB
 WAS_CLAMPED=0
 MAX_AFFORD_MB=$(( AVAIL_MB - MIN_FREE_MB ))
 if [ "$MEM_MB" -gt "$MAX_AFFORD_MB" ]; then
-    echo "lean-guard: clamping -M ${MEM_MB} -> ${MAX_AFFORD_MB}MB (avail=${AVAIL_MB}MB, floor=${MIN_FREE_MB}MB)"
+    # >&2 so the clamp is VISIBLE through check.sh's >/dev/null pipe — a clamped
+    # cap can abort even a light file while loading imports, and that failure is
+    # indistinguishable from a proof regression unless this line reaches the
+    # human (2026-07-24 operator incident: -M clamped to 1263MB on a loaded
+    # desktop, TypesExternal died at import-load, read as "FAIL: disturbing").
+    echo "lean-guard: clamping -M ${MEM_MB} -> ${MAX_AFFORD_MB}MB (avail=${AVAIL_MB}MB, floor=${MIN_FREE_MB}MB) — if this compile dies with a memory abort, free RAM and re-run" >&2
     MEM_MB=$MAX_AFFORD_MB
     CGROUP_MB=$(( MEM_MB + 1024 ))
     WAS_CLAMPED=1
 fi
 if [ "$MEM_MB" -lt 1024 ]; then
-    echo "FATAL: headroom clamp would leave lean < 1024MB — machine too loaded to compile safely"
+    echo "FATAL: headroom clamp would leave lean < 1024MB — machine too loaded to compile safely" >&2
     exit 1
 fi
 
@@ -179,10 +185,11 @@ fi
 case $EXIT_CODE in
   0)   echo "  OK" >> "$LOG_FILE" ;;
   124) echo "  TIMEOUT ${TIMEOUT_SEC}s" >> "$LOG_FILE"
-       echo "TIMEOUT: $LEAN_FILE exceeded ${TIMEOUT_SEC}s" ;;
+       echo "TIMEOUT: $LEAN_FILE exceeded ${TIMEOUT_SEC}s" >&2 ;;
   137) echo "  KILLED (cgroup MemoryMax ${CGROUP_MB}MB hit)" >> "$LOG_FILE"
-       echo "KILLED: $LEAN_FILE hit the ${CGROUP_MB}MB cgroup cap (contained — machine unharmed)" ;;
-  *)   echo "  FAILED exit $EXIT_CODE (lean error, possibly '-M ${MEM_MB}MB exceeded')" >> "$LOG_FILE" ;;
+       echo "KILLED: $LEAN_FILE hit the ${CGROUP_MB}MB cgroup cap (contained — machine unharmed)" >&2 ;;
+  *)   echo "  FAILED exit $EXIT_CODE (lean error, possibly '-M ${MEM_MB}MB exceeded')" >> "$LOG_FILE"
+       [ "$WAS_CLAMPED" -eq 1 ] && echo "lean-guard: NOTE — this run was memory-CLAMPED to -M ${MEM_MB}MB (machine was loaded); a memory abort here is an environment condition, not evidence of a proof failure. Free RAM (need ~$((REQ_MEM_MB + MIN_FREE_MB))MB available) and re-run." >&2 ;;
 esac
 # stale partial olean from a failed compile must not poison later imports
 [ $EXIT_CODE -ne 0 ] && rm -f "$OLEAN_FILE"
