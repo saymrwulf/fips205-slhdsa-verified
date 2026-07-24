@@ -31,6 +31,7 @@ PROOFS=(
   "ForsInnerSpec"
   "ForsOuterSpec"
   "InputPrepSpec"
+  "ApexSpec"
 )
 # Certificates whose axiom cones are audited, and the allowed extras beyond
 # the three kernel axioms: the five SHA-2 verify-path oracles. A certificate
@@ -46,6 +47,7 @@ CERTS=(
   "fips205.to_byte_loop_eq"
   "fips205.wots_csum_loop_eq"
   "fips205.base2b_outer_loop_eq"
+  "fips205.slh_verify_128s_accepts_iff"
 )
 ORACLES="verify_mono.oracle.f, verify_mono.oracle.h, verify_mono.oracle.t_l, verify_mono.oracle.t_len, verify_mono.oracle.h_msg"
 ALLOWED="[propext, Classical.choice, Quot.sound, ${ORACLES}]"
@@ -83,7 +85,7 @@ cd "$AENEAS_LEAN"
 AUD="$HERE/Proofs/.audit.lean"
 { echo "import Proofs.ChainSpec"; echo "import Proofs.WotsSpec"
   echo "import Proofs.XmssSpec"; echo "import Proofs.HtSpec"
-  echo "import Proofs.ForsInnerSpec"; echo "import Proofs.ForsOuterSpec"; echo "import Proofs.InputPrepSpec"
+  echo "import Proofs.ForsInnerSpec"; echo "import Proofs.ForsOuterSpec"; echo "import Proofs.InputPrepSpec"; echo "import Proofs.ApexSpec"
   for c in "${CERTS[@]}"; do echo "#print axioms $c"; done
 } > "$AUD"
 OUT=$(lake env bash -c "cd '$HERE' && export LEAN_PATH=\"\$LEAN_PATH:\$PWD/gen:\$PWD\" && LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' 'Proofs/.audit.lean'" 2>&1)
