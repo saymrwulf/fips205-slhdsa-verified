@@ -45,6 +45,7 @@ CERTS=(
   "fips205.to_int_loop_eq"
   "fips205.to_byte_loop_eq"
   "fips205.wots_csum_loop_eq"
+  "fips205.base2b_outer_loop_eq"
 )
 ORACLES="verify_mono.oracle.f, verify_mono.oracle.h, verify_mono.oracle.t_l, verify_mono.oracle.t_len, verify_mono.oracle.h_msg"
 ALLOWED="[propext, Classical.choice, Quot.sound, ${ORACLES}]"

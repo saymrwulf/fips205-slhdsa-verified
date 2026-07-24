@@ -281,4 +281,109 @@ theorem wots_csum_loop_eq {LEN : Std.Usize} (msg : Array Std.U32 LEN) (s : Nat) 
     apply bind_congr; intro csum1
     exact ih w csum1 hbound stop hstop'
 
+/- ── base_2b outer loop (Algorithm 4): the digit-writing loop ───────────────────
+   The outer loop over [start, stop) that, for each output index, runs the inner
+   `while bits < b` accumulation loop (base_2b_loop0_loop0, consumed OPAQUELY —
+   its own value-fidelity is a separate value-level statement), then writes
+   baseb[out] = (total ≫ bits) & (2^b − 1). Straight-line body nesting a loop,
+   so the step lemma PEELS the inner-loop sub-call with bind_congr and closes by
+   simp (a bare rfl would whnf the nested `loop` term → heartbeat timeout, the
+   ForsOuterSpec lesson). Kernel-3 clean (no oracle). -/
+
+theorem hbody_b2 (x : Slice Std.U8) (b : Std.U32) (start stop w : Std.Usize)
+    (baseb : Slice Std.U32) (inn : Std.Usize) (bits total : Std.U32)
+    (hd : decide (start.val < stop.val) = true) (hwok : start + 1#usize = ok w) :
+    helpers.base_2b_loop0.body x b { start := start, «end» := stop } baseb inn bits total
+      = (do
+          let (inn1, bits1, total1) ← helpers.base_2b_loop0_loop0 x b inn bits total
+          let bits2 ← bits1 - b
+          let i ← total1 >>> bits2
+          let i1 ← 32#u32 - b
+          let i2 ← core.num.U32.MAX >>> i1
+          let i3 ← lift (i &&& i2)
+          let bb1 ← Slice.update baseb start i3
+          ok (cont (({ start := w, «end» := stop } : core.ops.range.Range Std.Usize),
+                    bb1, inn1, bits2, total1))) := by
+  unfold helpers.base_2b_loop0.body
+  rw [hnext_usize hd hwok]
+  simp
+
+noncomputable def base2bOuterFold (x : Slice Std.U8) (b : Std.U32) :
+    Slice Std.U32 → Std.Usize → Std.U32 → Std.U32 → Std.Usize → Nat → Result (Slice Std.U32)
+  | baseb, _, _, _, _, 0 => ok baseb
+  | baseb, inn, bits, total, out, (k+1) => do
+      let (inn1, bits1, total1) ← helpers.base_2b_loop0_loop0 x b inn bits total
+      let bits2 ← bits1 - b
+      let i ← total1 >>> bits2
+      let i1 ← 32#u32 - b
+      let i2 ← core.num.U32.MAX >>> i1
+      let i3 ← lift (i &&& i2)
+      let bb1 ← Slice.update baseb out i3
+      let out' ← out + 1#usize
+      base2bOuterFold x b bb1 inn1 bits2 total1 out' k
+
+theorem base2b_outer_step (x : Slice Std.U8) (b : Std.U32) (start stop : Std.Usize)
+    (baseb : Slice Std.U32) (inn : Std.Usize) (bits total : Std.U32)
+    (hlt : start.val < stop.val) (hb : start.val + 1 < 2 ^ System.Platform.numBits) :
+    helpers.base_2b_loop0 { start := start, «end» := stop } x b baseb inn bits total
+      = (do
+          let (inn1, bits1, total1) ← helpers.base_2b_loop0_loop0 x b inn bits total
+          let bits2 ← bits1 - b
+          let i ← total1 >>> bits2
+          let i1 ← 32#u32 - b
+          let i2 ← core.num.U32.MAX >>> i1
+          let i3 ← lift (i &&& i2)
+          let bb1 ← Slice.update baseb start i3
+          let out' ← start + 1#usize
+          helpers.base_2b_loop0 { start := out', «end» := stop } x b bb1 inn1 bits2 total1) := by
+  obtain ⟨w, hwok, _⟩ := usize_succ hb
+  have hd : decide (start.val < stop.val) = true := by simp [hlt]
+  conv_lhs => rw [helpers.base_2b_loop0, loop_unfold_bind]
+  dsimp only
+  rw [hbody_b2 x b start stop w baseb inn bits total hd hwok]
+  simp only [bind_assoc, bind_ok]
+  conv_rhs => rw [show (start + 1#usize) = ok w from hwok]
+  simp only [bind_tc_ok, bind_ok]
+  -- peel the nested inner-loop sub-call, then simp-close the small tail
+  apply bind_congr; rintro ⟨inn1, bits1, total1⟩
+  simp [bind_assoc, bind_ok, helpers.base_2b_loop0]
+
+/-- **Algorithm 4 (base_2b) outer-loop fidelity.** The extracted digit-writing
+    loop equals the explicit fold; the inner accumulation loop is threaded as an
+    opaque sub-call. -/
+theorem base2b_outer_loop_eq (x : Slice Std.U8) (b : Std.U32) (s : Nat) :
+    ∀ (start : Std.Usize) (baseb : Slice Std.U32) (inn : Std.Usize) (bits total : Std.U32),
+      start.val + s < 2 ^ System.Platform.numBits →
+      ∀ (stop : Std.Usize), stop.val = start.val + s →
+      helpers.base_2b_loop0 { start := start, «end» := stop } x b baseb inn bits total
+        = base2bOuterFold x b baseb inn bits total start s := by
+  induction s with
+  | zero =>
+    intro start baseb inn bits total _ stop hstop
+    have hse : start = stop := by apply Std.UScalar.eq_of_val_eq; omega
+    subst hse
+    unfold helpers.base_2b_loop0 base2bOuterFold
+    rw [loop.eq_1]
+    unfold helpers.base_2b_loop0.body core.iter.range.IteratorRange.next
+    simp [core.iter.range.StepUsize, core.cmp.impls.PartialOrdUsize.lt]
+  | succ k ih =>
+    intro start baseb inn bits total hb stop hstop
+    have hlt : start.val < stop.val := by omega
+    have hb1 : start.val + 1 < 2 ^ System.Platform.numBits := by scalar_tac
+    obtain ⟨w, hwok, hwv⟩ := usize_succ hb1
+    rw [base2b_outer_step x b start stop baseb inn bits total hlt hb1]
+    unfold base2bOuterFold
+    have hbound : w.val + k < 2 ^ System.Platform.numBits := by scalar_tac
+    have hstop' : stop.val = w.val + k := by omega
+    apply bind_congr; rintro ⟨inn1, bits1, total1⟩
+    apply bind_congr; intro bits2
+    apply bind_congr; intro i
+    apply bind_congr; intro i1
+    apply bind_congr; intro i2
+    apply bind_congr; intro i3
+    apply bind_congr; intro bb1
+    rw [hwok]
+    simp only [bind_tc_ok, bind_ok]
+    exact ih w bb1 inn1 bits2 total1 hbound stop hstop'
+
 end fips205
