@@ -1,19 +1,34 @@
 /- Proofs/ApexSpec.lean — the APEX certificate.
 
-   THEOREM slh_verify_128s_accepts_iff: the extracted top-level verifier
-   slh_verify_128s returns `ok true` if and only if the recomputed hypertree
-   root byte-equals the pinned public-key root pk.pk_root. Everything the
-   verifier does after recomputing the root is exactly that byte comparison —
-   there is no other acceptance path. The recomputation `slhVerifyRoot` is the
-   extracted pipeline (H_msg digest → md/idx_tree/idx_leaf split via to_int and
-   masks → fors_pk_from_sig → ht recompute over xmss over wots over chain),
-   whose every loop is individually fidelity-certified by the ten preceding
-   theorems. #print axioms = kernel + the five SHA-2 oracles, nothing else.
+   THEOREM slh_verify_128s_accepts_iff: the extracted verifier
+   `verify_mono::slh_verify_128s` (a private, additive, `#![allow(dead_code)]`
+   monomorphic re-expression of the deployed generic verify path — NOT the
+   public `pk.verify()`, which it is not called by) returns `ok true` if and
+   only if the recomputed hypertree root byte-equals the pinned public-key root
+   pk.pk_root. Everything the verifier does after recomputing the root is
+   exactly that byte comparison — there is no other acceptance path. The
+   recomputation `slhVerifyRoot` is the extracted pipeline (H_msg digest →
+   md/idx_tree/idx_leaf split → fors_pk_from_sig → ht recompute over xmss over
+   wots over chain). #print axioms = kernel-3 + the five SHA-2 oracles.
+
+   SCOPE — what this does NOT establish (external review round 1, 2026-07-24):
+   • This proof is a STRUCTURAL FACTORIZATION, not a composition. It does NOT
+     invoke any of the ten loop-fidelity theorems (chain_free_loop_eq, …,
+     base2b_outer_loop_eq); it would remain provable if one were deleted. Those
+     ten are independent local-fidelity lemmas, not links in this proof chain.
+   • NOT "every loop": `base_2b`'s inner accumulation loop is threaded opaquely
+     and has no certificate — yet it determines the FORS indices / WOTS digits,
+     so a defect there could change the recomputed root while this theorem holds.
+   • NOT the deployed public verifier: the bridge from `verify_mono` to the
+     generic `pk.verify()` is the finite in-snapshot differential test, not a
+     machine-checked refinement.
+   • NOT closed-form FIPS 205 correctness: the folds are transliterations of the
+     extracted loops with the hash primitives opaque.
 
    The one real lemma is arrayEqU8_spec: the library array equality
    `PartialEqArray.eq PartialEqU8` on two Array U8 N returns exactly the
    decidable byte-equality of their underlying lists (a List.allM induction).
-   Everything else is unfolding the straight-line composition and threading the
+   Everything else is unfolding the extracted verifier and threading the
    recomputation identically on both sides with bind_congr.
 -/
 import Proofs.InputPrepSpec
@@ -184,9 +199,12 @@ theorem slh_verify_internal_accepts_iff {A D HP K LEN N : Std.Usize} (H M : Std.
   -- (no whnf of the nested ht_verify_free_loop — the ForsOuter lesson).
   simp only [ht_verify_free_split, bind_assoc]
 
-/-- **APEX (deployed SHA2-128s entry).** slh_verify_128s accepts iff the
-    recomputed root byte-equals pk.pk_root. Composes all ten loop-fidelity
-    certificates through the extracted pipeline. -/
+/-- **APEX (SHA2-128s facade entry).** The extracted `verify_mono::slh_verify_128s`
+    accepts iff the recomputed root byte-equals pk.pk_root. Acceptance
+    characterization only — see the file header for the four explicit
+    non-claims (this is a structural factorization, NOT a composition of the
+    ten loop certs; NOT the deployed public verifier; base_2b inner uncertified;
+    NOT closed-form FIPS-205 correctness). -/
 theorem slh_verify_128s_accepts_iff
     (mprime : Slice Std.U8)
     (sig : types.SlhDsaSig 12#usize 7#usize 9#usize 14#usize 35#usize 16#usize)

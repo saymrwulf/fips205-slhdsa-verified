@@ -23,11 +23,14 @@
        Debug-fmt axioms were ELIMINATED at source level by the
        fips205-source de-plumbing patch (8 sites, semantics identical,
        differential-test-validated) and their declarations deleted here
-       (dead-stub rule, 2026-07-23). Remaining as axioms: the Take
-       iterator machinery used by helpers::to_int (slh_verify_internal's
-       digest split — the apex round's de-plumbing item) and the zeroize
-       blanket impls (never on the verify path). The #print axioms audit
-       confirms only class (1) survives in any certificate cone.
+       (dead-stub rule, 2026-07-23). De-plumbing round 2 (2026-07-24) then
+       removed the LAST iterator adapters: helpers::to_int's Take and base_2b's
+       IterMut became index loops, so the Take::next axiom was deleted too.
+       Remaining as axioms on the whole model: the FIVE SHA-2 verify-path
+       oracles and three zeroize blanket impls (never on the verify path) —
+       nothing else. The #print axioms audit (fail-closed, wrap-safe since the
+       external-review fix of 2026-07-24) confirms only the five oracles + the
+       kernel three survive in any certificate cone.
    ────────────────────────────────────────────────────────────────────────────── -/
 -- This is a template file: rename it to "FunsExternal.lean" and fill the holes.
 import Aeneas

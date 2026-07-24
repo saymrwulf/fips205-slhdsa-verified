@@ -90,20 +90,29 @@ AUD="$HERE/Proofs/.audit.lean"
 } > "$AUD"
 OUT=$(lake env bash -c "cd '$HERE' && export LEAN_PATH=\"\$LEAN_PATH:\$PWD/gen:\$PWD\" && LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' 'Proofs/.audit.lean'" 2>&1)
 rm -f "$AUD"
+# CRITICAL: Lean WRAPS long axiom cones across physical lines. A per-line parse
+# silently drops continuation-line axioms (fail-OPEN — external review round 1,
+# 2026-07-24, demonstrated a smuggled axiom on line 2 passing). FLATTEN the whole
+# report first, then extract each cert's complete bracketed cone with a
+# literal-string (regex-safe) scan and subset-check it. Missing/empty report =>
+# fail-CLOSED.
+FLAT=$(echo "$OUT" | tr '\n' ' ' | tr -s ' ')
 fail=0
 for c in "${CERTS[@]}"; do
-  line=$(echo "$OUT" | grep -F "'$c' depends on axioms:" || true)
-  if [ -z "$line" ]; then echo "  ✗ $c — no axiom report"; fail=1; continue; fi
-  cone=$(echo "$line" | sed "s/.*depends on axioms: //")
-  # every axiom in the cone must be in ALLOWED
-  bad=$(echo "$cone" | tr -d '[]' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | while read -r ax; do
+  marker="'$c' depends on axioms: ["
+  if ! grep -qF "$marker" <<<"$FLAT"; then
+    echo "  ✗ $c — no axiom report (fail-closed)"; fail=1; continue
+  fi
+  # full cone between this cert's '[' and the next ']' (literal index, not regex)
+  cone=$(awk -v m="$marker" '{ i=index($0,m); if(i>0){ r=substr($0,i+length(m)); j=index(r,"]"); if(j>0) print substr(r,1,j-1) } }' <<<"$FLAT")
+  bad=$(echo "$cone" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | while read -r ax; do
     [ -z "$ax" ] && continue
     case " propext Classical.choice Quot.sound verify_mono.oracle.f verify_mono.oracle.h verify_mono.oracle.t_l verify_mono.oracle.t_len verify_mono.oracle.h_msg " in
       *" $ax "*) ;; *) echo "$ax" ;;
     esac
   done)
-  if [ -n "$bad" ]; then echo "  ✗ $c — DISALLOWED axioms: $bad"; fail=1
-  else echo "  ✓ $c  cone ⊆ allowed"; fi
+  if [ -n "$bad" ]; then echo "  ✗ $c — DISALLOWED axioms: $(echo $bad | tr '\n' ' ')"; fail=1
+  else echo "  ✓ $c  cone ⊆ allowed ($(echo "$cone" | tr ',' '\n' | grep -c .) axioms audited)"; fi
 done
 [ "$fail" = 0 ] || { echo "AXIOM AUDIT FAILED"; exit 1; }
 

@@ -5,22 +5,53 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: THE APEX IS PROVEN — the verify-path pyramid is complete (11 certificates)
+## STATUS: eleven certificates over the extracted verify model (external review round 1 applied)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. **Eleven theorems across seven
-layers — chain (5), WOTS+ (8), XMSS (10), hypertree (12), FORS (17),
-input-prep (2/3/4), and the apex (20): `fips205.slh_verify_128s_accepts_iff`
-— the deployed SLH-DSA-SHA2-128s verifier returns `ok true` if and only if
-the recomputed hypertree root byte-equals the pinned public-key root. Its
-`#print axioms` cone is exactly `[propext, Classical.choice, Quot.sound]`
-plus the five SHA-2 oracles, nothing else. Honest scope: the apex is an
-acceptance characterization (accept = root equality over the extracted
-recomputation, whose every loop is individually fidelity-certified by the
-ten preceding theorems); it does not restate the recomputation as a
-closed-form mathematical hypertree value. After de-plumbing rounds 1+2 the
-model carries no plumbing axioms on the verify path — its external surface
-is exactly the five SHA-2 oracles (plus off-path zeroize impls).**
+proofs compile, and the axiom audit passes (the Phase-3 parser was rewritten
+to be fail-closed and wrap-safe after external review round 1, 2026-07-24).
+
+**What is actually established** — eleven Lean theorems about the
+Aeneas-generated model of the **monomorphic `verify_mono` compatibility
+verify path** (an additive, `#![allow(dead_code)]` re-expression of the
+deployed generic verifier, using named hash oracles because Charon/Aeneas
+cannot translate the deployed `Hashers` function-pointer struct):
+
+- **Ten loop-fidelity theorems** (chain 5, WOTS+ 8, XMSS 10, hypertree 12,
+  FORS-inner/outer 17, and the input-prep helpers to_int/to_byte/checksum/
+  base_2b-outer, Alg 2/3/4). Each equates one *generated* Aeneas loop with an
+  explicit hand-written recursive fold — a local control-flow correspondence,
+  not an Algorithm-level mathematical specification.
+- **The apex, `fips205.slh_verify_128s_accepts_iff`** — the extracted
+  `verify_mono::slh_verify_128s` returns `ok true` **iff** the recomputed
+  hypertree root byte-equals `pk.pk_root`. This is an *acceptance
+  characterization*: there is no acceptance path other than root equality
+  over the extracted recomputation. Its `#print axioms` cone is exactly
+  `[propext, Classical.choice, Quot.sound]` + the five SHA-2 oracles.
+
+**What is NOT (yet) established — do not overclaim:**
+- **The apex proof does not compose the ten loop theorems.** It is a
+  *structural factorization* of the extracted verifier around its final
+  equality check; it references none of the ten (it would remain provable if
+  one were deleted). The ten are independent local-fidelity lemmas, not links
+  in the apex's proof chain.
+- **Not "every loop":** `base_2b`'s inner accumulation loop
+  (`helpers.base_2b_loop0_loop0`) is threaded *opaquely* and has no
+  certificate — and it determines the FORS indices / WOTS digits, so a defect
+  there could change the recomputed root while all eleven theorems still hold.
+- **Not the deployed public verifier:** the proved subject is the private
+  `verify_mono` facade; the bridge to upstream's generic `pk.verify()` is the
+  finite in-snapshot **differential test**, not a machine-checked refinement.
+- **Not closed-form FIPS 205 correctness:** the folds are transliterations of
+  the extracted loops (the hash primitives stay opaque); nothing here relates
+  the recomputed root to a mathematical SLH-DSA specification.
+
+This is a real **intermediate** verification layer, not an end-to-end
+formal verification of the deployed verifier. After de-plumbing rounds 1+2
+the model carries no plumbing axioms on the verify path — its external
+surface is exactly the five SHA-2 oracles (plus off-path zeroize impls).
+The trust base and residual assumptions are stated in
+[TRUSTED-BASE.md](TRUSTED-BASE.md).
 
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
   extracted `chain_free` loop equals the explicit s-fold hash chain, with
