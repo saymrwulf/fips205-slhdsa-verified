@@ -3,8 +3,9 @@
    THEOREM chain_free_loop_eq: the extracted `chain_free` loop equals the
    explicit s-fold application of the hash F, with the hash-address set to
    i, i+1, …, i+s−1 in turn. This rules out — machine-checked, for the
-   deployed monomorphic SHA2-128s verify path — an off-by-one loop bound, a
-   wrong address field, and wrong threading. F stays opaque
+   monomorphic SHA2-128s `verify_mono` path (a private facade, not the
+   deployed generic verifier) — an off-by-one loop bound, a wrong address
+   field, and wrong threading. F stays opaque
    (verify_mono.oracle.f), so the certificate cone is the three kernel axioms
    + oracle.f, and nothing else (audited by check.sh Phase 3).
 

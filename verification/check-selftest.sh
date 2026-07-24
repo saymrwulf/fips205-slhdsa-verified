@@ -1,25 +1,41 @@
 #!/usr/bin/env bash
-# Adversarial self-test of the check.sh gates (the R3-5 tradition: an audit
-# that cannot fail is theater). Three attacks, all MUST make check.sh fail:
+# Adversarial self-test of the check.sh gates (the R3-5 tradition: an audit that
+# cannot fail is theater). The axiom audit now runs INSIDE Lean
+# (Proofs/Audit.lean, exact cone per certificate via collectAxioms), so these
+# attacks target that gate's actual guarantees — not the retired text parser.
+# Every attack MUST make check.sh fail, via the intended gate:
 #
-#   1. DEAD FILE   — a stray Proofs/*.lean not in the manifest.
-#   2. SMUGGLED AXIOM (short cone) — an axiom outside {kernel-3} ∪ {5 oracles},
-#      on the FIRST line of the cone.
-#   3. SMUGGLED AXIOM (WRAPPED cone) — an axiom on a CONTINUATION line of a
-#      cone that wraps (the exact fail-open exploit external review found on
-#      2026-07-24: the old single-line parser saw only line 1). This attack
-#      guards the flattened-parse fix; a self-test that only plants short cones
-#      cannot detect a wrapped-cone parser regression.
+#   1. DEAD FILE          — a stray Proofs/*.lean not in the manifest.
+#   2. SMUGGLED AXIOM     — a certificate whose real cone contains a disallowed
+#                           axiom, declared clean. Exact-equality must report it
+#                           as `extra=[...]` (the classic extra-axiom detection).
+#   3. DROPPED ORACLE     — a certificate whose expected cone claims an oracle
+#                           its real proof does NOT use. A subset checker would
+#                           pass this; exact-equality must report `missing=[...]`.
+#                           This is the property the round-2 review demanded and
+#                           the retired subset parser could never enforce.
+#   4. VANISHED CERT      — a certificate name that no longer resolves. Since
+#                           `collectAxioms` returns [] for a missing name (a
+#                           fail-open trap), the audit must report NOT FOUND.
 #
-# Green here means: the gates genuinely reject all three. Self-cleaning.
+# Green here means: the gate genuinely rejects all four. Self-cleaning: the real
+# check.sh / Proofs/Audit.lean are backed up and restored around every attack.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE"
 
-cleanup() { rm -f Proofs/Stray.lean Proofs/Stray.olean Proofs/EvilSpec.lean \
-                  Proofs/EvilSpec.olean Proofs/EvilWrapSpec.lean \
-                  Proofs/EvilWrapSpec.olean check-evil-tmp.sh check-evilwrap-tmp.sh; }
+restore() {
+  [ -f check.sh.selftest.bak ]        && mv -f check.sh.selftest.bak        check.sh
+  [ -f Proofs/Audit.lean.selftest.bak ] && mv -f Proofs/Audit.lean.selftest.bak Proofs/Audit.lean
+  return 0
+}
+cleanup() {
+  restore
+  rm -f Proofs/Stray.lean Proofs/Stray.olean \
+        Proofs/EvilSpec.lean Proofs/EvilSpec.olean Proofs/Audit.olean
+}
 trap cleanup EXIT
+backup() { cp -f check.sh check.sh.selftest.bak; cp -f Proofs/Audit.lean Proofs/Audit.lean.selftest.bak; }
 
 echo "check-selftest: attacking the gates"
 echo "===================================="
@@ -30,76 +46,82 @@ if ./check.sh > /tmp/selftest-dead.out 2>&1; then
   echo "✗ ATTACK 1 SUCCEEDED: check.sh stayed green with a dead file"; exit 1
 fi
 grep -q "DEAD FILE" /tmp/selftest-dead.out \
-  || { echo "✗ ATTACK 1: failed, but not via the dead-file gate"; exit 1; }
+  || { echo "✗ ATTACK 1: failed, but not via the dead-file gate"; cat /tmp/selftest-dead.out; exit 1; }
 rm -f Proofs/Stray.lean Proofs/Stray.olean
 echo "✓ attack 1 rejected (dead-file gate works)"
 
-# ── Attack 2: smuggled axiom ────────────────────────────────────────────────
+# ── Attack 2: smuggled disallowed axiom in a real cone ──────────────────────
+# A new certificate whose cone genuinely contains `evil_ax`, declared as clean
+# (kernel-3) in the expected table. Exact-equality must flag extra=[evil_ax].
+backup
 cat > Proofs/EvilSpec.lean <<'EOF'
 import Proofs.ChainSpec
 axiom evil_ax : True
 theorem evil_thm : True := evil_ax
 EOF
 python3 - <<'PY'
+import re
+# check.sh: add EvilSpec to PROOFS so Phase 2 builds it and the dead-file gate
+# passes (inject right after the array's opening paren — no hard-coded contents).
 s = open("check.sh").read()
-s = s.replace('PROOFS=(\n  "ChainSpec"\n)', 'PROOFS=(\n  "ChainSpec"\n  "EvilSpec"\n)')
-# Robust to the growing PROOFS / CERTS lists (do NOT hard-code their current
-# contents — that rots the self-test as certificates are added): inject the
-# evil entries right after each array's opening paren.
-assert 'PROOFS=(\n' in s and 'CERTS=(\n' in s, "check.sh array shape changed"
+assert 'PROOFS=(\n' in s, "check.sh PROOFS array shape changed"
 s = s.replace('PROOFS=(\n', 'PROOFS=(\n  "EvilSpec"\n', 1)
-s = s.replace('CERTS=(\n', 'CERTS=(\n  "evil_thm"\n', 1)
-assert '{ echo "import Proofs.ChainSpec"' in s, "check.sh audit import shape changed"
-s = s.replace('{ echo "import Proofs.ChainSpec"',
-              '{ echo "import Proofs.EvilSpec"; echo "import Proofs.ChainSpec"', 1)
-open("check-evil-tmp.sh","w").write(s)
+open("check.sh","w").write(s)
+# Audit.lean: import EvilSpec and claim evil_thm is kernel-3 clean.
+a = open("Proofs/Audit.lean").read()
+assert 'import Proofs.ApexSpec' in a, "Audit.lean import shape changed"
+a = a.replace('import Proofs.ApexSpec', 'import Proofs.ApexSpec\nimport Proofs.EvilSpec', 1)
+assert 'def expectedCones : List (Name × List Name) :=' in a and '  [ (' in a, "Audit.lean table shape changed"
+a = a.replace('  [ (', '  [ (`evil_thm, kernel3),\n    (', 1)
+open("Proofs/Audit.lean","w").write(a)
 PY
-chmod +x check-evil-tmp.sh
-if ./check-evil-tmp.sh > /tmp/selftest-evil.out 2>&1; then
-  echo "✗ ATTACK 2 SUCCEEDED: audit passed a smuggled axiom"; exit 1
+if ./check.sh > /tmp/selftest-evil.out 2>&1; then
+  echo "✗ ATTACK 2 SUCCEEDED: audit passed a smuggled disallowed axiom"; exit 1
 fi
-grep -q "DISALLOWED" /tmp/selftest-evil.out \
-  || { echo "✗ ATTACK 2: failed, but not via the axiom gate"; exit 1; }
-rm -f Proofs/EvilSpec.lean Proofs/EvilSpec.olean check-evil-tmp.sh
-echo "✓ attack 2 rejected (axiom gate works)"
+grep -q "AUDIT FAILED" /tmp/selftest-evil.out \
+  || { echo "✗ ATTACK 2: failed, but not via the axiom audit"; cat /tmp/selftest-evil.out; exit 1; }
+grep -q "evil_ax" /tmp/selftest-evil.out \
+  || { echo "✗ ATTACK 2: rejected, but the audit did not name the smuggled axiom"; cat /tmp/selftest-evil.out; exit 1; }
+restore; rm -f Proofs/EvilSpec.lean Proofs/EvilSpec.olean Proofs/Audit.olean
+echo "✓ attack 2 rejected (extra-axiom detection works — evil_ax named)"
 
-# ── Attack 3: smuggled axiom on a WRAPPED cone (the fail-open exploit) ───────
-# evil_wrapped_thm bundles a disallowed axiom with the apex theorem, so its cone
-# is 9 axioms and WRAPS across physical lines with review_evil_ax on a
-# continuation line — exactly what the old single-line parser missed.
-cat > Proofs/EvilWrapSpec.lean <<'EOF'
-import Proofs.ApexSpec
-open Aeneas Aeneas.Std Result
-open fips205
-axiom review_evil_ax : True
-theorem evil_wrapped_thm
-    (mprime : Slice Std.U8)
-    (sig : types.SlhDsaSig 12#usize 7#usize 9#usize 14#usize 35#usize 16#usize)
-    (pk : types.SlhPublicKey 16#usize) :
-    True ∧ (verify_mono.slh_verify_128s mprime sig pk
-             = (do let root ← slhVerifyRoot 63#usize 30#usize mprime sig pk
-                   ok (decide (root.val = pk.pk_root.val)))) :=
-  ⟨review_evil_ax, slh_verify_128s_accepts_iff mprime sig pk⟩
-EOF
+# ── Attack 3: dropped-oracle (subset would pass; exact must not) ─────────────
+# Claim to_int_loop_eq depends on oracle.f. Its real cone is kernel-3 only, so
+# the audit must report missing=[verify_mono.oracle.f].
+backup
 python3 - <<'PY'
-s = open("check.sh").read()
-assert 'PROOFS=(\n' in s and 'CERTS=(\n' in s, "check.sh array shape changed"
-s = s.replace('PROOFS=(\n', 'PROOFS=(\n  "EvilWrapSpec"\n', 1)
-s = s.replace('CERTS=(\n', 'CERTS=(\n  "evil_wrapped_thm"\n', 1)
-assert '{ echo "import Proofs.ChainSpec"' in s, "check.sh audit import shape changed"
-s = s.replace('{ echo "import Proofs.ChainSpec"',
-              '{ echo "import Proofs.EvilWrapSpec"; echo "import Proofs.ChainSpec"', 1)
-open("check-evilwrap-tmp.sh","w").write(s)
+import re
+a = open("Proofs/Audit.lean").read()
+new, n = re.subn(r'(`fips205\.to_int_loop_eq,\s*)kernel3\)', r'\1kernel3 ++ [oracleF])', a)
+assert n == 1, f"expected exactly one to_int table entry, patched {n}"
+open("Proofs/Audit.lean","w").write(new)
 PY
-chmod +x check-evilwrap-tmp.sh
-if ./check-evilwrap-tmp.sh > /tmp/selftest-evilwrap.out 2>&1; then
-  echo "✗ ATTACK 3 SUCCEEDED: audit passed a smuggled axiom on a WRAPPED cone (fail-open!)"; exit 1
+if ./check.sh > /tmp/selftest-drop.out 2>&1; then
+  echo "✗ ATTACK 3 SUCCEEDED: audit passed a certificate missing a claimed oracle (subset hole!)"; exit 1
 fi
-grep -q "DISALLOWED" /tmp/selftest-evilwrap.out \
-  || { echo "✗ ATTACK 3: failed, but not via the axiom gate (wrapped-cone parse?)"; exit 1; }
-grep -q "review_evil_ax" /tmp/selftest-evilwrap.out \
-  || { echo "✗ ATTACK 3: rejected, but the audit did not name the continuation-line axiom"; exit 1; }
-echo "✓ attack 3 rejected (wrapped-cone axiom gate works — the continuation-line axiom was seen)"
+grep -q "AUDIT FAILED" /tmp/selftest-drop.out \
+  || { echo "✗ ATTACK 3: failed, but not via the axiom audit"; cat /tmp/selftest-drop.out; exit 1; }
+grep -q "missing=\[verify_mono.oracle.f\]" /tmp/selftest-drop.out \
+  || { echo "✗ ATTACK 3: rejected, but not by naming the missing oracle (exact-cone not enforced?)"; cat /tmp/selftest-drop.out; exit 1; }
+restore; rm -f Proofs/Audit.olean
+echo "✓ attack 3 rejected (missing-oracle detection works — exact cone enforced, not subset)"
+
+# ── Attack 4: vanished certificate (collectAxioms-returns-[] trap) ──────────
+backup
+python3 - <<'PY'
+a = open("Proofs/Audit.lean").read()
+assert a.count('`fips205.chain_free_loop_eq') >= 1
+a = a.replace('`fips205.chain_free_loop_eq,', '`fips205.chain_free_loop_eq_VANISHED,', 1)
+open("Proofs/Audit.lean","w").write(a)
+PY
+if ./check.sh > /tmp/selftest-vanish.out 2>&1; then
+  echo "✗ ATTACK 4 SUCCEEDED: audit stayed green for a non-existent certificate (fail-open!)"; exit 1
+fi
+grep -q "NOT FOUND" /tmp/selftest-vanish.out \
+  || { echo "✗ ATTACK 4: failed, but not via the existence check"; cat /tmp/selftest-vanish.out; exit 1; }
+restore; rm -f Proofs/Audit.olean
+echo "✓ attack 4 rejected (existence check works — a vanished cert cannot pass as 0-axiom)"
 
 echo
-echo "SELFTEST GREEN: all three gates genuinely reject their attacks."
+echo "SELFTEST GREEN: the audit genuinely rejects extra axioms, dropped oracles,"
+echo "vanished certificates, and dead proof files."

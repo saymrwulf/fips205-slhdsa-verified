@@ -5,11 +5,16 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: eleven certificates over the extracted verify model (external review round 1 applied)
+## STATUS: eleven certificates over the extracted verify model (external review round 2 applied)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes (the Phase-3 parser was rewritten
-to be fail-closed and wrap-safe after external review round 1, 2026-07-24).
+proofs compile, and the axiom audit passes. The audit now runs **inside
+Lean** (`verification/Proofs/Audit.lean`): it reads each certificate's cone
+from the kernel via `collectAxioms` and asserts SET EQUALITY against that
+certificate's expected boundary — so an *added* axiom and a silently
+*dropped* oracle dependency both fail, with no text parsing to misparse
+(external review round 2, 2026-07-24, replaced the earlier `#print axioms`
+text parser, which could fail open on an empty or truncated report).
 
 **What is actually established** — eleven Lean theorems about the
 Aeneas-generated model of the **monomorphic `verify_mono` compatibility
@@ -56,14 +61,15 @@ The trust base and residual assumptions are stated in
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
   extracted `chain_free` loop equals the explicit s-fold hash chain, with
   the hash address set to i, i+1, …, i+s−1 in turn. This rules out —
-  machine-checked, for the deployed monomorphic SHA2-128s verify path — an
+  machine-checked, for the monomorphic SHA2-128s `verify_mono` path — an
   off-by-one loop bound, a wrong address field, and wrong threading. Its
   `#print axioms` cone is **exactly** `[propext, Classical.choice,
   Quot.sound, verify_mono.oracle.f]` — the three kernel axioms plus the one
   hash oracle it touches, and nothing else (no transpiler plumbing; the u32
   range machinery was discharged with real definitions). check.sh Phase 3
-  fails the build if any certificate cone contains anything outside the
-  kernel three + the five documented SHA-2 oracles.
+  (the in-Lean exact-cone audit) fails the build if any certificate's cone
+  differs from its expected set — an extra axiom or a dropped oracle both
+  break it.
 
 - **`fips205.wots_loop1_eq`** (Algorithm 8, WOTS+ pk recomputation — the
   chain loop): the extracted `wots_pk_from_sig_free_loop1` equals the fold
@@ -103,10 +109,11 @@ exit 0); the u32 range-loop de-plumbing (faithful `Step` defs vs pinned
 rustc, axiom-clean); the 8-site source de-plumbing (snapshot commit
 `6f6a9d6`: `try_from`/`is_err`/`unwrap` on pre-masked values → plain
 casts, the WOTS+ checksum `iter().take()` + `&u32` Sub → an index loop —
-each site semantics-identical for every FIPS 205 parameter set, and the
-obsoleted transpiler axioms deleted from the external files); fidelity
-pinned by a differential test in the snapshot (valid / corrupted /
-wrong-message), re-run green after every source patch.
+each site a local rewrite whose equivalence is argued in the commit and
+checked, for SHA2-128s, by the differential test; the obsoleted transpiler
+axioms were deleted from the external files); fidelity pinned by that
+differential test in the snapshot (valid / corrupted / wrong-message),
+re-run green after every source patch.
 
 - **`fips205.fors_inner_loop_eq`** + **`fips205.fors_outer_loop_eq`**
   (Algorithm 17, FORS pk-from-sig): a nested loop, split into two theorems.
@@ -131,10 +138,14 @@ wrong-message), re-run green after every source patch.
   removing the last `Take`/`IterMut` iterator adapters; the obsoleted `Take`
   axiom was then deleted.
 
-The remaining work (the digest-split composition and the apex — the top-level
-`slh_verify` accepting iff the recomputed hypertree root equals the pinned
-public-key root) is not yet proven. The pyramid rises one certificate at a
-time, each audited to the same boundary.
+The apex (`slh_verify_128s_accepts_iff`, above) sits at the top of this layer:
+the extracted `verify_mono::slh_verify_128s` accepts iff the recomputed
+hypertree root byte-equals the pinned public-key root. What remains genuinely
+unproven is stated in "What is NOT (yet) established" above — most sharply the
+opaque `base_2b` inner loop (no certificate) and the bridge from this private
+`verify_mono` facade to the deployed generic verifier (a finite differential
+test, not a machine-checked refinement). Each certificate is audited to the
+same boundary.
 
 ## Subject
 
@@ -143,12 +154,15 @@ time, each audited to the same boundary.
   modules mirroring the FIPS 205 algorithm structure.
 - Pinned at upstream commit `30bac08580aa61f653e5436d1bbacb5ffac446c4`
   (2025-09-01), snapshotted with full history at
-  `saymrwulf/fips205-source` (snapshot head `5dca0db`, whose single
-  deviation from verbatim is the removal of upstream CI workflows,
-  documented in that commit). Aeneas-compat patches will land in the
-  snapshot repo as transparent, individually-justified commits — never
-  upstream. **No affiliation with, and no changes proposed to, the
-  upstream project.**
+  `saymrwulf/fips205-source`. The verbatim-import base commit's only
+  deviation from upstream is the removal of CI workflows (documented in
+  that commit); the Aeneas-compat and de-plumbing patches then landed as
+  transparent, individually-justified commits on top — never upstream.
+  The current snapshot head is **`797b4ef`** (the round-2 reproducibility
+  commit — committed `Cargo.lock` + pinned `rust-toolchain.toml` — on top of
+  de-plumbing round 2, `bea1051`); the model in this repo is extracted from
+  it, and `verification/extract.sh` refuses any other commit. **No
+  affiliation with, and no changes proposed to, the upstream project.**
 - Parameter set: **SLH-DSA-SHA2-128s** first (the small-signature profile
   deployed in the firmware/code-signing lane). The architecture
   generalizes; each further parameter set is a separate claim (rigor
@@ -169,9 +183,15 @@ Key generation and signing are out of scope (trusted base), exactly as
 ed25519 signing was. The five verify-path hash oracles (`h_msg, f, h,
 t_l, t_len` — SHA-2 instantiations; `prf`/`prf_msg` are sign-side only
 and never enter the cone) are opaque external models with written
-justifications, kept outside every certificate's dependency cone
-(honesty invariant H4); their semantics are the standing SHA-2 oracle
-boundary documented in [TRUSTED-BASE.md](TRUSTED-BASE.md).
+justifications. They are the *only* things beyond Lean's three kernel
+axioms that any certificate cone contains: each cone is exactly the
+kernel three plus the specific oracles that certificate's computation
+reaches (e.g. `chain` reaches `F`, so `oracle.f` is inside its cone; the
+input-prep helpers reach no hash, so their cones are kernel-3 alone).
+That the cones contain *nothing else* — no transpiler plumbing, no
+hidden axiom — is what the audit enforces (honesty invariant H4); their
+semantics are the standing SHA-2 oracle boundary documented in
+[TRUSTED-BASE.md](TRUSTED-BASE.md).
 
 ## Gate-0 record (2026-07-22)
 
@@ -195,32 +215,44 @@ this repository was created:
   (nested `&[&[u8]]` is untranslatable), and one `let-else` became the
   `is_err`/`unwrap` idiom. `verification/extract.sh` now re-derives the
   model from the mono root; charon + aeneas both exit 0, and
-  `verification/check.sh` compiles the result. The generic paths and all
-  twelve parameter sets are untouched (the only change to existing code is
-  two lines wiring the module).
+  `verification/check.sh` compiles the result. At this compat-patch commit
+  the only change to pre-existing code was two lines wiring the new module;
+  the generic paths and all twelve parameter sets stayed untouched. (The
+  later de-plumbing commits — rounds 1 and 2 — then made further local edits
+  to `helpers.rs`/`wots.rs`, each documented and differential-tested; see the
+  snapshot history at head `797b4ef`.)
 
-## What will be claimed (when the button is green, not before)
+## What is claimed (the button is green)
 
-One theorem per layer, each a statement about the **extracted** functions
-(H3), compiled by `verification/check.sh` with a per-certificate
-`#print axioms` audit (H1): chain semantics, WOTS+ pk recomputation,
-XMSS path recomputation, hypertree acceptance, FORS pk recomputation,
-and the apex — `slh_verify_internal` accepts iff the recomputed
-hypertree root equals the pinned public-key root.
+Each certificate is a statement about the **extracted** functions (H3),
+compiled by `verification/check.sh` with the in-Lean exact-cone audit (H1):
+chain semantics, WOTS+ pk recomputation, XMSS path recomputation, hypertree
+acceptance, FORS pk recomputation, the input-prep helpers, and the apex —
+`verify_mono::slh_verify_128s` accepts iff the recomputed hypertree root
+equals the pinned public-key root. The precise scope and non-claims are in
+the STATUS section above.
 
 **The allowed axiom set, stated precisely:** unlike the ed25519 field and
 scalar layers (whose cones are exactly `[propext, Classical.choice,
 Quot.sound]`), the hash oracles permeate *every* SLH-DSA layer — `chain`
-already calls `F`. So each certificate's cone may contain the three
-kernel axioms **plus at most the five named oracles**
-(`verify_mono.oracle.{h_msg, f, h, t_l, t_len}`) — and nothing else: the
-transpiler-plumbing axioms currently in `FunsExternal.lean` must be
-discharged before any certificate ships, and the audit fails the button
-if any of them (or anything unlisted) appears in a cone.
+already calls `F`. Each certificate's cone is therefore the three kernel
+axioms **plus exactly the named oracles its computation reaches** (and
+nothing else). The transpiler-plumbing axioms that once sat in
+`FunsExternal.lean` were discharged (de-plumbing rounds 1+2) before any
+certificate shipped; the audit fails the button if anything outside a
+certificate's expected boundary — plumbing, an extra oracle, or a dropped
+one — appears in its cone.
 
 ## Discipline
 
 Every Lean compile in this repository runs under `verification/lean-guard`
-(memory-capped, machine-wide serialized). Extraction is reproducible from
-the committed `extract.sh` against the pinned snapshot (R1). What cannot
-be proven is named in [TRUSTED-BASE.md](TRUSTED-BASE.md), not hidden (H5).
+(memory-capped, machine-wide serialized). Extraction is reproducible: the
+full pin set (source commit, Charon/Aeneas commits + toolchain channel, Lean
+and OCaml versions) is in [verification/PROVENANCE.json](verification/PROVENANCE.json);
+`verification/extract.sh` refuses to run against a wrong-commit or dirty
+source tree, and re-running it reproduces the aeneas-generated model
+byte-identically (verified 2026-07-24). The axiom audit runs inside Lean
+([verification/Proofs/Audit.lean](verification/Proofs/Audit.lean)): exact
+per-certificate cone equality, fail-closed, adversarially exercised by
+`verification/check-selftest.sh`. What cannot be proven is named in
+[TRUSTED-BASE.md](TRUSTED-BASE.md), not hidden (H5).

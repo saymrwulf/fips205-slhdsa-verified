@@ -9,20 +9,49 @@
 #
 #   Rust --charon--> SlhVerify.llbc --aeneas--> gen/SlhVerify/*.lean
 #
+# REPRODUCIBILITY (external review round 2, 2026-07-24): this script now
+# REFUSES to extract from a source tree that is not at the pinned commit or
+# is dirty (a wrong/uncommitted source would silently produce a different
+# model). The full pin set (source + charon + aeneas + lean + ocaml) is in
+# verification/PROVENANCE.json; re-running this against the pinned tree
+# reproduces gen/SlhVerify/{Types,Funs}.lean byte-identically.
+#
 # HISTORY (gate-0 finding, resolved 2026-07-22): upstream models the hash
 # family as `crate::hashers::Hashers`, a struct of plain function pointers,
-# which Aeneas cannot translate. The compat patch in fips205-source
-# (>= 2d89ee3) provides the additive monomorphic verify_mono module whose
-# hash suite is reached through named free functions — this script roots
-# there, and charon + aeneas both exit 0. Regeneration is byte-identical
-# (verified against the committed gen/ during the 2026-07-22 audit).
+# which Aeneas cannot translate. The compat patch in fips205-source provides
+# the additive monomorphic verify_mono module whose hash suite is reached
+# through named free functions — this script roots there.
 #
-# Usage:  ./extract.sh
+# Usage:  ./extract.sh [PATH_TO_fips205-source]
+#           (default: ~/GitClone/FormalVerification/sources/fips205-source)
+#         Override the required commit only for a deliberate re-pin:
+#           EXPECTED_SRC_COMMIT=<full-sha> ./extract.sh [PATH]
 set -euo pipefail
 
 source ~/aeneas-toolchain/env.sh
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CRATE=~/GitClone/FormalVerification/sources/fips205-source
+CRATE="${1:-$HOME/GitClone/FormalVerification/sources/fips205-source}"
+
+# The pinned source commit this repo's model + proofs were verified against.
+# Keep in lockstep with verification/PROVENANCE.json and the README snapshot.
+EXPECTED_SRC_COMMIT="${EXPECTED_SRC_COMMIT:-797b4ef26338e27363683656f93cb065a77daa0e}"
+
+# ── Provenance guard: refuse a wrong or dirty source tree (fail-closed) ──────
+[ -d "$CRATE/.git" ] || { echo "ERROR: '$CRATE' is not a git checkout of fips205-source." >&2; exit 2; }
+GOT_COMMIT="$(git -C "$CRATE" rev-parse HEAD)"
+if [ "$GOT_COMMIT" != "$EXPECTED_SRC_COMMIT" ]; then
+  echo "ERROR: source is at ${GOT_COMMIT:0:12}, but this repo is pinned to" >&2
+  echo "       ${EXPECTED_SRC_COMMIT:0:12}. Check out the pin, or set" >&2
+  echo "       EXPECTED_SRC_COMMIT=<sha> for a deliberate re-pin." >&2
+  exit 3
+fi
+if [ -n "$(git -C "$CRATE" status --porcelain)" ]; then
+  echo "ERROR: source tree at '$CRATE' is dirty. Extraction must run against" >&2
+  echo "       a clean, committed tree so the model is reproducible." >&2
+  git -C "$CRATE" status --porcelain | sed 's/^/         /' >&2
+  exit 4
+fi
+echo "[0/2] provenance OK: fips205-source @ ${EXPECTED_SRC_COMMIT:0:12} (clean)"
 
 echo "[1/2] charon: Rust -> LLBC (monomorphic SHA2-128s verify cone;"
 echo "        crate::verify_mono::oracle is the opaque SHA-2 boundary)"

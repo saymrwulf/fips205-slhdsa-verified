@@ -5,9 +5,12 @@
 #
 #   Phase 1 — compile the extracted Lean model (gen/SlhVerify).
 #   Phase 2 — compile the proof files (Proofs/).
-#   Phase 3 — axiom audit: every certificate's #print axioms cone must be a
-#             subset of {propext, Classical.choice, Quot.sound} plus the five
-#             SHA-2 hash oracles (the documented boundary) — nothing else.
+#   Phase 3 — axiom audit, performed INSIDE Lean (Proofs/Audit.lean): each
+#             certificate's cone, read from the kernel via `collectAxioms`, must
+#             EQUAL its expected set EXACTLY — kernel-3 plus only the named SHA-2
+#             oracles. No text parsing (round-2 review closed that class of bug);
+#             any extra, any missing, a renamed/deleted cert, or an axiom/opaque
+#             sham is a Lean elaboration error → non-zero exit → fail-closed.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -49,9 +52,6 @@ CERTS=(
   "fips205.base2b_outer_loop_eq"
   "fips205.slh_verify_128s_accepts_iff"
 )
-ORACLES="verify_mono.oracle.f, verify_mono.oracle.h, verify_mono.oracle.t_l, verify_mono.oracle.t_len, verify_mono.oracle.h_msg"
-ALLOWED="[propext, Classical.choice, Quot.sound, ${ORACLES}]"
-
 echo "fips205-slhdsa-verified — check"
 echo "==============================="
 
@@ -74,49 +74,30 @@ lake env bash -c "
   compile() { echo \"  · \$1\"; LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' \"Proofs/\${1}.lean\" >/dev/null || { echo \"FAIL: Proofs/\$1\"; exit 1; }; }
   for m in ${PROOFS[*]}; do compile \"\$m\"; done
   # no dead proof files: everything under Proofs/ must be in the manifest
+  # (PROOFS) or be the audit driver (Audit, compiled in Phase 3).
   for f in Proofs/*.lean; do b=\$(basename \"\$f\" .lean)
-    case \" ${PROOFS[*]} \" in *\" \$b \"*) ;; *) echo \"DEAD FILE: Proofs/\$b.lean not in manifest\"; exit 1 ;; esac
+    case \" ${PROOFS[*]} Audit \" in *\" \$b \"*) ;; *) echo \"DEAD FILE: Proofs/\$b.lean not in manifest\"; exit 1 ;; esac
   done
 "
 
-# ── Phase 3: axiom audit ────────────────────────────────────────────────────
-echo "=== Phase 3: axiom audit (cone ⊆ kernel-3 + 5 oracles) ==="
+# ── Phase 3: axiom audit (exact cone per certificate, inside Lean) ───────────
+echo "=== Phase 3: axiom audit (exact cone per certificate — inside Lean) ==="
 cd "$AENEAS_LEAN"
-AUD="$HERE/Proofs/.audit.lean"
-{ echo "import Proofs.ChainSpec"; echo "import Proofs.WotsSpec"
-  echo "import Proofs.XmssSpec"; echo "import Proofs.HtSpec"
-  echo "import Proofs.ForsInnerSpec"; echo "import Proofs.ForsOuterSpec"; echo "import Proofs.InputPrepSpec"; echo "import Proofs.ApexSpec"
-  for c in "${CERTS[@]}"; do echo "#print axioms $c"; done
-} > "$AUD"
-OUT=$(lake env bash -c "cd '$HERE' && export LEAN_PATH=\"\$LEAN_PATH:\$PWD/gen:\$PWD\" && LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' 'Proofs/.audit.lean'" 2>&1)
-rm -f "$AUD"
-# CRITICAL: Lean WRAPS long axiom cones across physical lines. A per-line parse
-# silently drops continuation-line axioms (fail-OPEN — external review round 1,
-# 2026-07-24, demonstrated a smuggled axiom on line 2 passing). FLATTEN the whole
-# report first, then extract each cert's complete bracketed cone with a
-# literal-string (regex-safe) scan and subset-check it. Missing/empty report =>
-# fail-CLOSED.
-FLAT=$(echo "$OUT" | tr '\n' ' ' | tr -s ' ')
-fail=0
-for c in "${CERTS[@]}"; do
-  marker="'$c' depends on axioms: ["
-  if ! grep -qF "$marker" <<<"$FLAT"; then
-    echo "  ✗ $c — no axiom report (fail-closed)"; fail=1; continue
-  fi
-  # full cone between this cert's '[' and the next ']' (literal index, not regex)
-  cone=$(awk -v m="$marker" '{ i=index($0,m); if(i>0){ r=substr($0,i+length(m)); j=index(r,"]"); if(j>0) print substr(r,1,j-1) } }' <<<"$FLAT")
-  bad=$(echo "$cone" | tr ',' '\n' | sed 's/^ *//;s/ *$//' | while read -r ax; do
-    [ -z "$ax" ] && continue
-    case " propext Classical.choice Quot.sound verify_mono.oracle.f verify_mono.oracle.h verify_mono.oracle.t_l verify_mono.oracle.t_len verify_mono.oracle.h_msg " in
-      *" $ax "*) ;; *) echo "$ax" ;;
-    esac
-  done)
-  if [ -n "$bad" ]; then echo "  ✗ $c — DISALLOWED axioms: $(echo $bad | tr '\n' ' ')"; fail=1
-  else echo "  ✓ $c  cone ⊆ allowed ($(echo "$cone" | tr ',' '\n' | grep -c .) axioms audited)"; fi
-done
-[ "$fail" = 0 ] || { echo "AXIOM AUDIT FAILED"; exit 1; }
+# Proofs/Audit.lean reads each cert's cone from the kernel (collectAxioms) and
+# asserts SET EQUALITY against its expected boundary. Compiling it IS the audit:
+# any mismatch throws → non-zero exit. We additionally require the explicit
+# PASSED line, so a build that somehow exits 0 without running the audit still
+# fails closed.
+AUD_OUT=$(lake env bash -c "cd '$HERE' && export LEAN_PATH=\"\$LEAN_PATH:\$PWD/gen:\$PWD\" && LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' 'Proofs/Audit.lean'" 2>&1) || {
+  echo "$AUD_OUT" | sed 's/^/  /'
+  echo "AXIOM AUDIT FAILED (Audit.lean did not compile — cone mismatch, missing cert, or sham)"; exit 1; }
+if ! grep -qF "exact-cone audit PASSED" <<<"$AUD_OUT"; then
+  echo "$AUD_OUT" | sed 's/^/  /'
+  echo "AXIOM AUDIT FAILED (no PASSED line — fail-closed)"; exit 1
+fi
+echo "  ✓ exact-cone audit PASSED: each of the ${#CERTS[@]} certificate cones == its expected boundary set"
 
 echo
-echo "ALL GREEN — model compiles, proofs compile, every certificate cone is"
-echo "the three kernel axioms plus (at most) the SHA-2 hash oracles."
+echo "ALL GREEN — model compiles, proofs compile, and every certificate cone"
+echo "equals EXACTLY the three kernel axioms plus its documented SHA-2 oracles."
 echo "Certificates proven: ${CERTS[*]}"

@@ -1,0 +1,36 @@
+{
+  "_comment": "Single machine-readable pin set to reproduce the extracted Lean model in gen/SlhVerify from source. External review round 2 (2026-07-24). Running verification/extract.sh against the pinned source tree with the pinned Charon/Aeneas toolchain reproduces the two aeneas-generated files byte-identically (sha256 below). The *External*.lean files are hand-maintained (not regenerated) and are NOT part of this reproducibility claim.",
+  "parameter_set": "SLH-DSA-SHA2-128s",
+  "source": {
+    "repo": "github.com/saymrwulf/fips205-source",
+    "head": "797b4ef26338e27363683656f93cb065a77daa0e",
+    "upstream_base": "integritychain/fips205 @ 30bac08580aa61f653e5436d1bbacb5ffac446c4",
+    "upstream_deviation": "verbatim import minus CI workflows; then the additive monomorphic verify_mono compat module + de-plumbing rounds 1-2, each an individually-justified commit",
+    "cargo_lock": "committed",
+    "rust_toolchain_toml": "nightly-2026-06-01"
+  },
+  "transpiler": {
+    "charon": { "commit": "9dd7f23c", "toolchain_channel": "nightly-2026-06-01" },
+    "aeneas": { "commit": "bf13c42e" }
+  },
+  "proof_env": {
+    "lean": "v4.30.0-rc2 (3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc)",
+    "ocaml": "5.3.0"
+  },
+  "extraction": {
+    "driver": "verification/extract.sh (refuses a wrong-commit or dirty source tree)",
+    "charon": "charon cargo --preset=aeneas --start-from crate::verify_mono::slh_verify_128s --opaque crate::verify_mono::oracle --opaque sha2 --opaque sha3 --opaque zeroize --opaque rand_core --hide-marker-traits --dest-file SlhVerify.llbc -- --no-default-features --features slh_dsa_sha2_128s",
+    "aeneas": "aeneas -backend lean -split-files -subdir SlhVerify -dest gen SlhVerify.llbc"
+  },
+  "generated_artifacts_sha256": {
+    "SlhVerify.llbc": "d8ec0b00593eee1778bc4cc0cc1801fb6415bb294425f01384434849c6443f58",
+    "gen/SlhVerify/Types.lean": "db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384",
+    "gen/SlhVerify/Funs.lean": "7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f"
+  },
+  "hand_maintained_not_regenerated": [
+    "gen/SlhVerify/TypesExternal.lean",
+    "gen/SlhVerify/FunsExternal.lean"
+  ],
+  "byte_identical_regeneration_verified": "2026-07-24",
+  "audit_gate": "verification/Proofs/Audit.lean — in-Lean exact per-certificate cone equality via collectAxioms (fail-closed); compiled by check.sh Phase 3; adversarially exercised by check-selftest.sh"
+}
