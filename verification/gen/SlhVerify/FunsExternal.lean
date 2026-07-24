@@ -44,17 +44,9 @@ set_option maxHeartbeats 1000000
 set_option maxRecDepth 2048
 open fips205
 
-/-- [core::iter::adapters::take::{impl core::iter::traits::iterator::Iterator<Clause0_Item> for core::iter::adapters::take::Take<I>}::next]:
-    Source: '/rustc/library/core/src/iter/adapters/take.rs', lines 36:4-36:55
-    Name pattern: [core::iter::adapters::take::{core::iter::traits::iterator::Iterator<core::iter::adapters::take::Take<@I>, @Clause0_Item>}::next]
-    Visibility: public -/
-@[rust_fun
-  "core::iter::adapters::take::{core::iter::traits::iterator::Iterator<core::iter::adapters::take::Take<@I>, @Clause0_Item>}::next"]
-axiom core.iter.adapters.take.Take.Insts.CoreIterTraitsIteratorIterator.next
-  {I : Type} {Clause0_Item : Type} (traitsiteratorIteratorInst :
-  core.iter.traits.iterator.Iterator I Clause0_Item) :
-  core.iter.adapters.take.Take I → Result ((Option Clause0_Item) ×
-    (core.iter.adapters.take.Take I))
+-- (the core::iter::adapters::take::Take::next axiom was here; DELETED
+-- 2026-07-24 after de-plumbing round 2 removed the last Take iterator on the
+-- verify path — to_int/base_2b now index-loop. dead-stub hygiene rule.)
 
 /-- [core::iter::range::{impl core::iter::range::Step for u32}::backward_checked]:
     Source: '/rustc/library/core/src/iter/range.rs', lines 290:16-290:74

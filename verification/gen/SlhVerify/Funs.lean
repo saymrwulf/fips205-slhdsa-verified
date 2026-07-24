@@ -59,48 +59,45 @@ def Array.Insts.ZeroizeZeroize {Z : Type} (N : Std.Usize) (ZeroizeInst :
 }
 
 /-- [fips205::helpers::to_int]: loop body 0:
-    Source: 'src/helpers.rs', lines 17:4-23:5 -/
+    Source: 'src/helpers.rs', lines 20:4-26:5 -/
 @[rust_loop_body]
 def helpers.to_int_loop.body
-  (iter : core.iter.adapters.take.Take (core.slice.iter.Iter Std.U8))
-  (total : Std.U64) :
-  Result (ControlFlow ((core.iter.adapters.take.Take (core.slice.iter.Iter
-    Std.U8)) × Std.U64) Std.U64)
+  (x : Slice Std.U8) (iter : core.ops.range.Range Std.Usize) (total : Std.U64)
+  :
+  Result (ControlFlow ((core.ops.range.Range Std.Usize) × Std.U64) Std.U64)
   := do
   let (o, iter1) ←
-    core.iter.adapters.take.Take.Insts.CoreIterTraitsIteratorIterator.next
-      (core.iter.traits.iterator.IteratorSliceIter Std.U8) iter
+    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
   match o with
   | none => ok (done total)
-  | some item =>
-    let i ← total <<< 8#i32
-    let i1 ← lift (core.convert.num.FromU64U8.from item)
-    let total1 ← i + i1
+  | some i =>
+    let i1 ← total <<< 8#i32
+    let i2 ← Slice.index_usize x i
+    let i3 ← lift (core.convert.num.FromU64U8.from i2)
+    let total1 ← i1 + i3
     ok (cont (iter1, total1))
 
 /-- [fips205::helpers::to_int]: loop 0:
-    Source: 'src/helpers.rs', lines 17:4-23:5 -/
+    Source: 'src/helpers.rs', lines 20:4-26:5 -/
 @[rust_loop]
 def helpers.to_int_loop
-  (iter : core.iter.adapters.take.Take (core.slice.iter.Iter Std.U8))
-  (total : Std.U64) :
+  (iter : core.ops.range.Range Std.Usize) (x : Slice Std.U8) (total : Std.U64)
+  :
   Result Std.U64
   := do
   loop
-    (fun (iter1, total1) => helpers.to_int_loop.body iter1 total1)
+    (fun (iter1, total1) => helpers.to_int_loop.body x iter1 total1)
     (iter, total)
 
 /-- [fips205::helpers::to_int]:
-    Source: 'src/helpers.rs', lines 9:0-27:1 -/
+    Source: 'src/helpers.rs', lines 9:0-30:1 -/
 def helpers.to_int (x : Slice Std.U8) (n : Std.U32) : Result Std.U64 := do
   let left_val := Slice.len x
   let right_val ← lift (UScalar.cast .Usize n)
   massert (left_val = right_val)
   massert (n <= 8#u32)
-  let i ← core.slice.Slice.iter x
-  let i1 ← lift (UScalar.cast .Usize n)
-  let iter ← core.slice.iter.IteratorSliceIter.take i i1
-  helpers.to_int_loop iter 0#u64
+  let i ← lift (UScalar.cast .Usize n)
+  helpers.to_int_loop { start := 0#usize, «end» := i } x 0#u64
 
 /-- [fips205::LEN2]
     Source: 'src/lib.rs', lines 74:0-74:20 -/
@@ -111,7 +108,7 @@ def helpers.to_int (x : Slice Std.U8) (n : Std.U32) : Result Std.U64 := do
 @[global_simps, irreducible] def LGW : Std.U32 := 4#u32
 
 /-- [fips205::helpers::to_byte]: loop body 0:
-    Source: 'src/helpers.rs', lines 44:4-53:5 -/
+    Source: 'src/helpers.rs', lines 47:4-56:5 -/
 @[rust_loop_body]
 def helpers.to_byte_loop.body
   (n : Std.U32) (iter : core.ops.range.Range Std.U32)
@@ -134,7 +131,7 @@ def helpers.to_byte_loop.body
     ok (cont (iter1, a1, total1))
 
 /-- [fips205::helpers::to_byte]: loop 0:
-    Source: 'src/helpers.rs', lines 44:4-53:5 -/
+    Source: 'src/helpers.rs', lines 47:4-56:5 -/
 @[rust_loop]
 def helpers.to_byte_loop
   (iter : core.ops.range.Range Std.U32) (n : Std.U32)
@@ -146,7 +143,7 @@ def helpers.to_byte_loop
     (iter, s, total)
 
 /-- [fips205::helpers::to_byte]:
-    Source: 'src/helpers.rs', lines 35:0-57:1 -/
+    Source: 'src/helpers.rs', lines 38:0-60:1 -/
 def helpers.to_byte
   (x : Std.U32) (n : Std.U32) : Result (Array Std.U8 2#usize) := do
   let s := Array.repeat 2#usize 0#u8
@@ -160,7 +157,7 @@ def helpers.to_byte
   helpers.to_byte_loop { start := 0#u32, «end» := n } n s x
 
 /-- [fips205::helpers::base_2b]: loop body 1:
-    Source: 'src/helpers.rs', lines 83:8-95:9 -/
+    Source: 'src/helpers.rs', lines 90:8-102:9 -/
 @[rust_loop_body]
 def helpers.base_2b_loop0_loop0.body
   (x : Slice Std.U8) (b : Std.U32) (inn : Std.Usize) (bits : Std.U32)
@@ -180,7 +177,7 @@ def helpers.base_2b_loop0_loop0.body
   else ok (done (inn, bits, total))
 
 /-- [fips205::helpers::base_2b]: loop 1:
-    Source: 'src/helpers.rs', lines 83:8-95:9 -/
+    Source: 'src/helpers.rs', lines 90:8-102:9 -/
 @[rust_loop]
 def helpers.base_2b_loop0_loop0
   (x : Slice Std.U8) (b : Std.U32) (inn : Std.Usize) (bits : Std.U32)
@@ -193,48 +190,46 @@ def helpers.base_2b_loop0_loop0
     (inn, bits, total)
 
 /-- [fips205::helpers::base_2b]: loop body 0:
-    Source: 'src/helpers.rs', lines 80:4-104:5 -/
+    Source: 'src/helpers.rs', lines 87:4-111:5 -/
 @[rust_loop_body]
 def helpers.base_2b_loop0.body
-  (x : Slice Std.U8) (b : Std.U32) (iter : core.slice.iter.IterMut Std.U32)
-  (back : core.slice.iter.IterMut Std.U32 → core.slice.iter.IterMut Std.U32)
-  (inn : Std.Usize) (bits : Std.U32) (total : Std.U32) :
-  Result (ControlFlow ((core.slice.iter.IterMut Std.U32) ×
-    (core.slice.iter.IterMut Std.U32 → core.slice.iter.IterMut Std.U32) ×
-    Std.Usize × Std.U32 × Std.U32) (core.slice.iter.IterMut Std.U32))
+  (x : Slice Std.U8) (b : Std.U32) (iter : core.ops.range.Range Std.Usize)
+  (baseb : Slice Std.U32) (inn : Std.Usize) (bits : Std.U32) (total : Std.U32)
+  :
+  Result (ControlFlow ((core.ops.range.Range Std.Usize) × (Slice Std.U32) ×
+    Std.Usize × Std.U32 × Std.U32) (Slice Std.U32))
   := do
-  let (o, iter1, next_back) ← core.slice.iter.IteratorIterMut.next iter
+  let (o, iter1) ←
+    core.iter.range.IteratorRange.next core.iter.range.StepUsize iter
   match o with
-  | none => ok (done (let im := next_back iter1 none
-                      back im))
-  | some _ =>
+  | none => ok (done baseb)
+  | some out =>
     let (inn1, bits1, total1) ←
       helpers.base_2b_loop0_loop0 x b inn bits total
     let bits2 ← bits1 - b
     let i ← total1 >>> bits2
     let i1 ← 32#u32 - b
     let i2 ← core.num.U32.MAX >>> i1
-    let item ← lift (i &&& i2)
-    ok (cont (iter1, fun im => let im1 := next_back im (some item)
-                               back im1, inn1, bits2, total1))
+    let i3 ← lift (i &&& i2)
+    let s ← Slice.update baseb out i3
+    ok (cont (iter1, s, inn1, bits2, total1))
 
 /-- [fips205::helpers::base_2b]: loop 0:
-    Source: 'src/helpers.rs', lines 80:4-104:5 -/
+    Source: 'src/helpers.rs', lines 87:4-111:5 -/
 @[rust_loop]
 def helpers.base_2b_loop0
-  (iter : core.slice.iter.IterMut Std.U32)
-  (back : core.slice.iter.IterMut Std.U32 → core.slice.iter.IterMut Std.U32)
-  (x : Slice Std.U8) (b : Std.U32) (inn : Std.Usize) (bits : Std.U32)
-  (total : Std.U32) :
-  Result (core.slice.iter.IterMut Std.U32)
+  (iter : core.ops.range.Range Std.Usize) (x : Slice Std.U8) (b : Std.U32)
+  (baseb : Slice Std.U32) (inn : Std.Usize) (bits : Std.U32) (total : Std.U32)
+  :
+  Result (Slice Std.U32)
   := do
   loop
-    (fun (iter1, back1, inn1, bits1, total1) => helpers.base_2b_loop0.body x b
-      iter1 back1 inn1 bits1 total1)
-    (iter, back, inn, bits, total)
+    (fun (iter1, baseb1, inn1, bits1, total1) => helpers.base_2b_loop0.body x b
+      iter1 baseb1 inn1 bits1 total1)
+    (iter, baseb, inn, bits, total)
 
 /-- [fips205::helpers::base_2b]:
-    Source: 'src/helpers.rs', lines 65:0-107:1 -/
+    Source: 'src/helpers.rs', lines 68:0-114:1 -/
 def helpers.base_2b
   (x : Slice Std.U8) (b : Std.U32) (out_len : Std.U32) (baseb : Slice Std.U32)
   :
@@ -250,40 +245,39 @@ def helpers.base_2b
   let left_val ← lift (UScalar.cast .Usize out_len)
   let right_val := Slice.len baseb
   massert (left_val = right_val)
-  let (iter, iter_mut_back) ← core.slice.Slice.iter_mut baseb
-  let back ←
-    helpers.base_2b_loop0 iter (fun im => im) x b 0#usize 0#u32 0#u32
-  ok (iter_mut_back back)
+  let i5 ← lift (UScalar.cast .Usize out_len)
+  helpers.base_2b_loop0 { start := 0#usize, «end» := i5 } x b baseb 0#usize
+    0#u32 0#u32
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_layer_address]:
-    Source: 'src/helpers.rs', lines 200:4-200:86 -/
+    Source: 'src/helpers.rs', lines 207:4-207:86 -/
 def helpers.Adrs.set_layer_address
   (self : types.Adrs) (la : Std.U32) : Result types.Adrs := do
   let a ← lift (core.num.U32.to_be_bytes la)
   ok { self with f0 := a }
 
 /-- [fips205::helpers::{fips205::types::Adrs}::get_key_pair_address]:
-    Source: 'src/helpers.rs', lines 202:4-202:84 -/
+    Source: 'src/helpers.rs', lines 209:4-209:84 -/
 def helpers.Adrs.get_key_pair_address
   (self : types.Adrs) : Result Std.U32 := do
   ok (core.num.U32.from_be_bytes self.f5)
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_key_pair_address]:
-    Source: 'src/helpers.rs', lines 204:4-204:100 -/
+    Source: 'src/helpers.rs', lines 211:4-211:100 -/
 def helpers.Adrs.set_key_pair_address
   (self : types.Adrs) (kp_addr : Std.U32) : Result types.Adrs := do
   let a ← lift (core.num.U32.to_be_bytes kp_addr)
   ok { self with f5 := a }
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_chain_address]:
-    Source: 'src/helpers.rs', lines 206:4-206:85 -/
+    Source: 'src/helpers.rs', lines 213:4-213:85 -/
 def helpers.Adrs.set_chain_address
   (self : types.Adrs) (i : Std.U32) : Result types.Adrs := do
   let a ← lift (core.num.U32.to_be_bytes i)
   ok { self with f6 := a }
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_type_and_clear]:
-    Source: 'src/helpers.rs', lines 208:4-213:5 -/
+    Source: 'src/helpers.rs', lines 215:4-220:5 -/
 def helpers.Adrs.set_type_and_clear
   (self : types.Adrs) (type_t : Std.U32) : Result types.Adrs := do
   let a ← lift (core.num.U32.to_be_bytes type_t)
@@ -293,7 +287,7 @@ def helpers.Adrs.set_type_and_clear
   ok { self with f4 := a, f5 := a1, f6 := a2, f7 := a3 }
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_tree_address]:
-    Source: 'src/helpers.rs', lines 215:4-219:5 -/
+    Source: 'src/helpers.rs', lines 222:4-226:5 -/
 def helpers.Adrs.set_tree_address
   (self : types.Adrs) (t : Std.U64) : Result types.Adrs := do
   let bytes ← lift (core.num.U64.to_be_bytes t)
@@ -314,28 +308,28 @@ def helpers.Adrs.set_tree_address
   ok { self with f2 := a, f3 := a1 }
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_hash_address]:
-    Source: 'src/helpers.rs', lines 221:4-221:89 -/
+    Source: 'src/helpers.rs', lines 228:4-228:89 -/
 def helpers.Adrs.set_hash_address
   (self : types.Adrs) (addr : Std.U32) : Result types.Adrs := do
   let a ← lift (core.num.U32.to_be_bytes addr)
   ok { self with f7 := a }
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_tree_height]:
-    Source: 'src/helpers.rs', lines 223:4-223:82 -/
+    Source: 'src/helpers.rs', lines 230:4-230:82 -/
 def helpers.Adrs.set_tree_height
   (self : types.Adrs) (z : Std.U32) : Result types.Adrs := do
   let a ← lift (core.num.U32.to_be_bytes z)
   ok { self with f6 := a }
 
 /-- [fips205::helpers::{fips205::types::Adrs}::get_tree_index]:
-    Source: 'src/helpers.rs', lines 225:4-225:82 -/
+    Source: 'src/helpers.rs', lines 232:4-232:82 -/
 def helpers.Adrs.get_tree_index
   (self : types.Adrs) : Result (Std.U32 × types.Adrs) := do
   let i ← lift (core.num.U32.from_be_bytes self.f7)
   ok (i, self)
 
 /-- [fips205::helpers::{fips205::types::Adrs}::set_tree_index]:
-    Source: 'src/helpers.rs', lines 227:4-227:81 -/
+    Source: 'src/helpers.rs', lines 234:4-234:81 -/
 def helpers.Adrs.set_tree_index
   (self : types.Adrs) (i : Std.U32) : Result types.Adrs := do
   let a ← lift (core.num.U32.to_be_bytes i)
