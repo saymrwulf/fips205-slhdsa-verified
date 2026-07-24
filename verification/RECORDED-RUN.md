@@ -48,3 +48,48 @@ fips205.wots_csum_loop_eq :: propext, Classical.choice, Quot.sound
 fips205.base2b_outer_loop_eq :: propext, Classical.choice, Quot.sound
 fips205.slh_verify_128s_accepts_iff :: propext, Classical.choice, Quot.sound, verify_mono.oracle.f, verify_mono.oracle.h, verify_mono.oracle.h_msg, verify_mono.oracle.t_l, verify_mono.oracle.t_len
 ```
+
+## Locked cargo run under the pinned nightly (round-3 reviewer recommendation)
+
+The differential test `mono_matches_deployed_verify` is the sole
+verify_mono→deployed bridge; recorded here under `--locked` on the
+toolchain pinned by `rust-toolchain.toml` (nightly-2026-06-01, the
+transpiler's own channel). Note: the upstream integration-test files
+hardcode all twelve parameter sets, so they only build with default
+features — the single-feature run therefore uses `--lib` (which contains
+the differential test), and the full suite runs with default features.
+This explains the round-1 GPT observation that single-feature
+`cargo test` fails to compile: an upstream test-layout property, not a
+defect of the snapshot.
+
+```
+=== LOCKED CARGO RUN — fips205-source @ 797b4ef26338e27363683656f93cb065a77daa0e ===
+date(UTC): 20260724T192246Z
+toolchain: nightly-2026-06-01-x86_64-unknown-linux-gnu (overridden by '/home/oho/GitClone/FormalVerification/sources/fips205-source/rust-toolchain.toml')
+
+--- (1) differential test (verify_mono vs deployed generic verifier), lib tests, SHA2-128s feature ---
+running 2 tests
+test verify_mono::tests::mono_matches_deployed_verify ... ok
+test slh_dsa_sha2_128s::tests::simple_round_trips ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.82s
+
+--- (2) full upstream suite, default features (all parameter sets), --locked ---
+test src/traits.rs - traits::Signer::try_sign_with_rng (line 284) ... ok
+test src/traits.rs - traits::Verifier::hash_verify (line 455) ... ok
+test src/traits.rs - traits::Verifier::verify (line 415) ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 28.20s
+
+
+--- (2b) full-suite summary lines (all test binaries + doctests) ---
+running 13 tests
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 39.25s
+running 3 tests
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 143.21s
+running 1 test
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 12 tests
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.39s
+running 37 tests
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.89s
+```

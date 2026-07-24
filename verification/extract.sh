@@ -28,7 +28,6 @@
 #           EXPECTED_SRC_COMMIT=<full-sha> ./extract.sh [PATH]
 set -euo pipefail
 
-source ~/aeneas-toolchain/env.sh
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CRATE="${1:-$HOME/GitClone/FormalVerification/sources/fips205-source}"
 
@@ -52,6 +51,11 @@ if [ -n "$(git -C "$CRATE" status --porcelain)" ]; then
   exit 4
 fi
 echo "[0/2] provenance OK: fips205-source @ ${EXPECTED_SRC_COMMIT:0:12} (clean)"
+
+# Toolchain env is sourced only AFTER the provenance guard, so a party without
+# the aeneas toolchain still gets the clean exit-2/3/4 diagnostics above
+# (round-3 reviewer nit, 2026-07-24).
+source ~/aeneas-toolchain/env.sh
 
 echo "[1/2] charon: Rust -> LLBC (monomorphic SHA2-128s verify cone;"
 echo "        crate::verify_mono::oracle is the opaque SHA-2 boundary)"
