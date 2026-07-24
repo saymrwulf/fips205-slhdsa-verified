@@ -5,11 +5,13 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: FIVE LAYERS PROVEN — chain (5), WOTS+ loop (8), XMSS (10), hypertree (12), FORS (17)
+## STATUS: SIX LAYERS PROVEN — chain (5), WOTS+ (8), XMSS (10), hypertree (12), FORS (17), input-prep (2/3/4)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. **Six theorems across five
-verify-path layers, proven bottom-up:**
+proofs compile, and the axiom audit passes. **Ten theorems across six
+verify-path layers, proven bottom-up. After de-plumbing round 2 the model
+carries no plumbing axioms on the verify path — its external surface is
+exactly the five SHA-2 oracles (plus off-path zeroize impls).**
 
 - **`fips205.chain_free_loop_eq`** (Algorithm 5, WOTS+ chaining): the
   extracted `chain_free` loop equals the explicit s-fold hash chain, with
@@ -77,9 +79,22 @@ wrong-message), re-run green after every source patch.
   peeling its 16-bind body with `bind_congr` (a bare `rfl` there whnf-times-
   out over the nested inner `loop`).
 
-The remaining layers (the input-prep/digest-split composition and the apex)
-are not yet proven — the pyramid rises one certificate at a time, each
-audited to the same boundary.
+- **input-prep** (`fips205.to_int_loop_eq`, `to_byte_loop_eq`,
+  `wots_csum_loop_eq`, `base2b_outer_loop_eq` — Algorithms 2/3/4 + the WOTS+
+  checksum): the byte→integer, integer→byte, checksum, and digit-decomposition
+  loops that prepare the verifier's inputs. All four cones are **exactly**
+  `[propext, Classical.choice, Quot.sound]` — pure kernel-3, no hash oracle
+  (byte/bit arithmetic touches no hash). `base_2b`'s inner `while` loop is
+  threaded opaquely, as every layer treats its sub-loops. These proofs became
+  possible after **de-plumbing round 2** (snapshot `bea1051`) rewrote
+  `to_int`'s `iter().take()` and `base_2b`'s `iter_mut()` as index loops,
+  removing the last `Take`/`IterMut` iterator adapters; the obsoleted `Take`
+  axiom was then deleted.
+
+The remaining work (the digest-split composition and the apex — the top-level
+`slh_verify` accepting iff the recomputed hypertree root equals the pinned
+public-key root) is not yet proven. The pyramid rises one certificate at a
+time, each audited to the same boundary.
 
 ## Subject
 
