@@ -1,5 +1,5 @@
 {
-  "_comment": "Single machine-readable pin set to reproduce the extracted Lean model in gen/SlhVerify from source. External review round 2 (2026-07-24). Running verification/extract.sh against the pinned source tree with the pinned Charon/Aeneas toolchain reproduces the two aeneas-generated files byte-identically (sha256 below). The *External*.lean files are hand-maintained (not regenerated) and are NOT part of this reproducibility claim.",
+  "_comment": "Single machine-readable pin set to reproduce the extracted Lean model in gen/SlhVerify from source. External review rounds 2-5 (2026-07-24 .. 2026-07-27). Running verification/extract.sh against the pinned source tree with the pinned Charon/Aeneas toolchain reproduces the two aeneas-generated files byte-identically (generated_artifacts_sha256 below). The *External*.lean files are hand-maintained (not regenerated) and are NOT part of that reproducibility claim — but they ARE byte-pinned for integrity in model_integrity_sha256, since they carry the five oracle axioms and the discharged Step definitions. NOTE: SlhVerify.llbc is an intermediate artifact and is .gitignored, so its hash here can only be checked by a party who re-runs extract.sh.",
   "parameter_set": "SLH-DSA-SHA2-128s",
   "source": {
     "repo": "github.com/saymrwulf/fips205-source",
@@ -10,8 +10,13 @@
     "rust_toolchain_toml": "nightly-2026-06-01"
   },
   "transpiler": {
-    "charon": { "commit": "9dd7f23c", "toolchain_channel": "nightly-2026-06-01" },
-    "aeneas": { "commit": "bf13c42e" }
+    "charon": {
+      "commit": "9dd7f23c",
+      "toolchain_channel": "nightly-2026-06-01"
+    },
+    "aeneas": {
+      "commit": "bf13c42e"
+    }
   },
   "proof_env": {
     "lean": "v4.30.0-rc2 (3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc)",
@@ -33,11 +38,15 @@
   ],
   "byte_identical_regeneration_verified": "2026-07-24",
   "model_integrity_sha256": {
-    "_comment": "All four Lean model files check.sh Phase 0 pins before compiling anything — the two aeneas-generated files AND the two hand-maintained *External files (which carry the five oracle axioms and the Step defs). A hand-edit of the model fails the build here (round-4 reviewer F3).",
+    "_comment": "All four Lean model files check.sh Phase 0 pins before compiling anything \u2014 the two aeneas-generated files AND the two hand-maintained *External files (which carry the five oracle axioms and the Step defs). A hand-edit of the model fails the build here (round-4 reviewer F3).",
     "gen/SlhVerify/TypesExternal.lean": "37958beb7c90b649497a20b0802f98f0fb2d975c245eca956d7396af74d7759f",
-    "gen/SlhVerify/FunsExternal.lean": "73fa2a7d14b35bb6b6746534e88cba527d0e17f154f7a7d841a9c519befeea47",
+    "gen/SlhVerify/FunsExternal.lean": "5efe551c35969c9da28b2f3eaed4a6a67c410c62a1926aab390e3abf010390f8",
     "gen/SlhVerify/Types.lean": "db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384",
     "gen/SlhVerify/Funs.lean": "7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f"
   },
-  "audit_gate": "verification/Proofs/Audit.lean — in-Lean audit (round 4): per-certificate exact cone equality (collectAxioms) + elaborated-statement fingerprint (Expr.hash) + full enumeration of every theorem in the eight certificate modules (each cone ⊆ boundary, so an un-manifested theorem cannot smuggle an axiom) + a manifest fingerprint check.sh binds to. Fail-closed; adversarially exercised by check-selftest.sh (attacks 1–6). check.sh Phase 0 pins the model bytes to model_integrity_sha256 above."
+  "harness_integrity_sha256": {
+    "_comment": "The compiler harness is part of the trusted computing base: check.sh shells out to lean-guard for every compile, and round-5 review demonstrated that stubbing it alone yields ALL GREEN in 3.6s over destroyed proofs. lean-guard is KEPT (it is the memory cap and machine-wide lock that protect this machine after the 12.2GB OOM incident) and sha256-pinned by Phase 0. NOT covered, and disclosed as trusted in TRUSTED-BASE.md item 11: check.sh itself, ~/aeneas-toolchain/env.sh, $AENEAS_HOME, python3, and the Lean toolchain.",
+    "lean-guard": "690d861cfd81b327604ffd5ef85599ee01b2bcd943907f5b71b8b6f99bad418f"
+  },
+  "audit_gate": "verification/Proofs/Audit.lean \u2014 in-Lean audit (round 5). Per certificate: exact cone equality (collectAxioms) + elaborated-statement check. Enumeration: EVERY declaration kind (def/theorem/opaque/axiom \u2014 round 4 matched theorems only, so a `def : False` passed) in the eight certificate modules AND in Audit.lean itself (the auditor is not exempt). Binding digest: check.sh binds to the SHA-256 of a canonical AUDIT-MANIFEST block covering the POLICY constants (allowedBoundary + certModules \u2014 round-5 NEW-1: widening allowedBoundary previously re-opened the False-proof with the fingerprint byte-identical), every certificate's fully-elaborated statement, and every reachable specification definition's fully-elaborated BODY (round-5 NEW-2: redefining a reference fold to *be* the extracted loop previously left cone and fingerprint intact while the certificate degenerated to `loop = loop`). The 32-bit Expr.hash is retained only as a per-certificate diagnostic, not as the binding. Fail-closed; adversarially exercised by check-selftest.sh. check.sh Phase 0 additionally purges stale .olean files, forbids stray .lean outside gen/ and Proofs/, and pins model + harness bytes."
 }

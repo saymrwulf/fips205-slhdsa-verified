@@ -1,37 +1,47 @@
 /- ──────────────────────────────────────────────────────────────────────────────
-   Proofs/Audit.lean — the axiom-cone + statement + coverage audit, in Lean.
+   Proofs/Audit.lean — the axiom / statement / specification / coverage audit.
 
-   History: round 2 moved the axiom check inside Lean (collectAxioms, exact
-   per-cert set equality). Round 4 (third reviewer, 2026-07-24) demonstrated
-   that exact-cone-per-cert, while sound FOR LISTED certs, left three gaps
-   OUTSIDE the cone check — all fail-open:
-     F1  the audited SET was unbound: deleting a manifest row silently drops a
-         cert, and adding an un-manifested theorem (e.g. `: False := cheat _`)
-         was never looked at → the repo could prove False under ALL GREEN.
-     F2  only cones were bound, never STATEMENTS: a certificate whose type was
-         replaced by a tautology of the same cone passed green.
-     F3  (handled in check.sh) the gen/ model bytes were unbound to provenance.
+   ROUND 5 (third reviewer, 2026-07-27) demonstrated that the round-4 gate was
+   closed at the EXPLOITS but not at the MECHANISMS. Three fail-opens, each
+   executed end-to-end with the button printing ALL GREEN:
 
-   This file now closes F1 and F2 with three layers:
-     (1) NAMED CERTS — each of the eleven: exists ∧ is a `theorem` ∧ cone ==
-         its expected set EXACTLY ∧ its elaborated-type structural fingerprint
-         (`Expr.hash`) == the committed value. A gutted statement changes the
-         fingerprint → fail (F2).
-     (2) FULL-MODULE ENUMERATION — EVERY theorem defined in the eight
-         certificate modules must have a cone ⊆ the allowed boundary. An
-         un-manifested `: False := cheat _` has cone {cheat} ⊄ boundary → fail,
-         whether or not anyone "listed" it (F1, the dangerous half).
-     (3) MANIFEST FINGERPRINT — a hash over the whole committed manifest
-         (names + cones + type fingerprints) is printed; check.sh binds to the
-         exact committed value, so deleting/swapping a row, or editing a cone or
-         a fingerprint, changes it and fails the build outside Lean too (F1, the
-         set-binding half).
+     NEW-1  `manifestFingerprint` covered `manifest` only — never
+            `allowedBoundary`, the sole predicate the enumeration tests against.
+            Adding one name to that list re-opened the `False`-proof completely,
+            with the committed fingerprint BYTE-IDENTICAL.
+     NEW-2  the statement fingerprint pinned each certificate's TYPE, which
+            references its hand-written reference fold BY NAME. Redefining that
+            fold to *be* the extracted loop left cone and type-hash identical
+            while the certificate degenerated to "the loop equals the loop" —
+            100% of the fidelity content lives in those definitions.
+     (drill) layer-2 enumeration matched `.thmInfo` only, so a `def : False`
+            passed; and this file's own declarations were enumerated by nothing.
 
-   Any mismatch is a `throwError` → non-zero `lean` exit. Nothing fails open for
-   a listed cert, an unlisted theorem, a gutted statement, or a dropped oracle.
-   The standing limit (unchanged, disclosed): an audit cannot defend against an
-   author who edits the manifest AND check.sh AND the proofs together; the
-   consumer defense is the pinned commit reviewed at the pin.
+   The fix binds the WHOLE audited object, not the parts an attacker happened to
+   touch. This file emits a canonical AUDIT-MANIFEST block covering:
+
+     · the POLICY constants (`allowedBoundary`, `certModules`) — NEW-1;
+     · every certificate's fully-elaborated STATEMENT (`pp.all`) — F2 properly;
+     · every hand-written SPECIFICATION constant transitively reachable from
+       those statements, with its fully-elaborated DEFINITION BODY — NEW-2.
+       (Proof-valued constants contribute their statement, not their proof term:
+       proof irrelevance makes the term semantically immaterial.)
+
+   `check.sh` binds to the **SHA-256** of that block. This also retires the
+   32-bit `Expr.hash` as the load-bearing digest (NEW-5): the per-certificate
+   type hashes below remain, but only as fast, human-legible DIAGNOSTICS that
+   name which certificate moved — the cryptographic binding is the SHA-256.
+
+   Enumeration now covers EVERY declaration kind (`def`, `theorem`, `opaque`,
+   `axiom`, …) in the eight certificate modules AND every declaration of this
+   file itself (the auditor is no longer exempt from its own audit — round-5 R1).
+
+   Standing limit, stated accurately (see TRUSTED-BASE.md item 11 for the full
+   trusted computing base): an audit executed by a harness cannot defend against
+   an author who edits that harness. `verification/lean-guard` is therefore
+   sha256-pinned by check.sh Phase 0, but `check.sh` itself, the toolchain env,
+   and `$AENEAS_HOME` remain trusted. The consumer defense is, and always was,
+   the pinned commit reviewed at the pin.
    ────────────────────────────────────────────────────────────────────────────── -/
 import Proofs.ChainSpec
 import Proofs.WotsSpec
@@ -54,23 +64,22 @@ def oracleTL   : Name := `verify_mono.oracle.t_l
 def oracleTLen : Name := `verify_mono.oracle.t_len
 def oracleHMsg : Name := `verify_mono.oracle.h_msg
 
-/-- The only axioms permitted in ANY cone in the certificate modules: kernel-3
-    plus the five SHA-2 oracles. -/
+/-- The ONLY axioms permitted in any cone anywhere in the audited modules.
+    POLICY CONSTANT — folded into the SHA-256 digest (round-5 NEW-1): widening
+    this list changes the digest and fails the build. -/
 def allowedBoundary : List Name :=
   kernel3 ++ [oracleF, oracleH, oracleTL, oracleTLen, oracleHMsg]
 
-/-- The eight certificate-bearing proof modules. Every `theorem` defined in
-    these must have a cone ⊆ allowedBoundary (layer 2). -/
+/-- The eight certificate-bearing proof modules. POLICY CONSTANT — also folded
+    into the digest. (It is additionally cross-checked by `certsSeen` below:
+    every manifest certificate must be found inside one of these modules.) -/
 def certModules : List Name :=
   [`Proofs.ChainSpec, `Proofs.WotsSpec, `Proofs.XmssSpec, `Proofs.HtSpec,
    `Proofs.ForsInnerSpec, `Proofs.ForsOuterSpec, `Proofs.InputPrepSpec, `Proofs.ApexSpec]
 
-/-- THE COMMITTED MANIFEST: for each certificate, its exact expected cone and
-    the structural fingerprint (`Expr.hash`) of its elaborated statement. Ground
-    truth captured 2026-07-27 via Probe.lean; cross-checked against the round-1/2
-    cone reconstructions. Changing a proof (cone) OR a statement (fingerprint)
-    breaks the audit; adding/removing a row changes the manifest fingerprint that
-    check.sh binds to. -/
+/-- Per-certificate expected cone + a 32-bit `Expr.hash` of the elaborated
+    statement. The hash is a DIAGNOSTIC ONLY (it names which certificate moved);
+    the binding digest is the SHA-256 over the canonical block. -/
 def manifest : List (Name × List Name × UInt64) :=
   [ (`fips205.chain_free_loop_eq,          kernel3 ++ [oracleF],                              2535491171),
     (`fips205.wots_loop1_eq,               kernel3 ++ [oracleF],                              2968777228),
@@ -84,29 +93,67 @@ def manifest : List (Name × List Name × UInt64) :=
     (`fips205.base2b_outer_loop_eq,        kernel3,                                           324621577),
     (`fips205.slh_verify_128s_accepts_iff, kernel3 ++ [oracleF, oracleH, oracleTL, oracleTLen, oracleHMsg], 2489587792) ]
 
-/-- Canonical serialization of the committed manifest → one hash. check.sh binds
-    to the printed value, so any row add/remove/edit, cone change, or fingerprint
-    change flips it and fails the build. -/
-def manifestFingerprint : UInt64 :=
-  let sortName (l : List Name) : List Name :=
-    ((l.map toString).toArray.qsort (· < ·)).toList.map (·.toName)
-  let ser := String.intercalate ";" (manifest.map (fun (n, cone, fp) =>
-    s!"{n}|{String.intercalate "," ((sortName cone).map toString)}|{fp}"))
-  String.hash ser
+/-- Deterministic name ordering for the canonical serialization. -/
+def sortNames (l : List Name) : List Name :=
+  ((l.map toString).toArray.qsort (· < ·)).toList.map (·.toName)
+
+/-- Whitespace-canonical: every whitespace run collapses to one space, so the
+    pretty-printer's line wrapping cannot perturb the digest. -/
+def normWs (s : String) : String :=
+  (s.foldl (fun (acc : String × Bool) c =>
+      let c := if c.isWhitespace then ' ' else c
+      if c == ' ' then (if acc.2 then acc else (acc.1.push ' ', true))
+      else (acc.1.push c, false))
+    ("", true)).1
+
+/-- Is `n` a hand-written declaration living in one of the certificate modules?
+    These are the SPECIFICATION side — the folds the certificates are stated
+    against — as opposed to the extracted model in `gen/` (pinned by Phase 0). -/
+def isSpecConst (env : Environment) (n : Name) : Bool :=
+  match env.getModuleIdxFor? n with
+  | some idx => certModules.contains env.header.moduleNames[idx.toNat]!
+  | none => false
+
+/-- Transitive closure over specification constants, starting from a
+    certificate's STATEMENT and following DEFINITION bodies (a theorem
+    contributes its statement only). This discovers the reference folds — and
+    any future one — automatically, so a new specification definition cannot be
+    introduced without moving the digest. -/
+partial def closureOf (env : Environment) (seen : NameSet) (work : List Name) : NameSet :=
+  match work with
+  | [] => seen
+  | n :: rest =>
+    if seen.contains n || !isSpecConst env n then closureOf env seen rest
+    else
+      let seen := seen.insert n
+      let more := match env.find? n with
+        | some (.defnInfo v) => v.value.getUsedConstants.toList ++ v.type.getUsedConstants.toList
+        | some ci            => ci.type.getUsedConstants.toList
+        | none               => []
+      closureOf env seen (more ++ rest)
+
+/-- Fully-explicit (`pp.all`) rendering, whitespace-canonicalized. -/
+def ppAll (e : Expr) : CommandElabM String := do
+  let s ← Command.liftCoreM <| Meta.MetaM.run' <|
+    withOptions (fun o => o.setBool `pp.all true) do
+      return (← Meta.ppExpr e).pretty
+  return normWs s
 
 elab "auditCones" : command => do
   let env ← getEnv
   let mut errs : Array String := #[]
-  -- (0) the manifest's expected cones may reference nothing outside the boundary
+
+  -- (0) the manifest's expected cones may reference nothing outside the policy.
   for (cert, cone, _) in manifest do
     for a in cone do
       unless allowedBoundary.contains a do
         throwError "manifest references non-boundary axiom {a} for {cert}"
-  -- (1) NAMED CERTS: exists ∧ theorem ∧ exact cone ∧ statement fingerprint
+
+  -- (1) NAMED CERTS: exists ∧ is a theorem ∧ exact cone ∧ statement diagnostic.
   for (cert, expected, expFp) in manifest do
     match env.find? cert with
-    | none                  => errs := errs.push s!"{cert}: NOT FOUND (renamed/deleted?)"
-    | some (.thmInfo ci)     =>
+    | none                 => errs := errs.push s!"{cert}: NOT FOUND (renamed/deleted?)"
+    | some (.thmInfo ci)   =>
         let got := (← collectAxioms cert).toList
         let extras  := got.filter      (fun a => !expected.contains a)
         let missing := expected.filter (fun a => !got.contains a)
@@ -114,35 +161,79 @@ elab "auditCones" : command => do
           errs := errs.push s!"{cert}: cone extra={extras} missing={missing}"
         unless ci.type.hash == expFp do
           errs := errs.push s!"{cert}: STATEMENT fingerprint {ci.type.hash} ≠ committed {expFp} (statement changed?)"
-    | some (.axiomInfo _)   => errs := errs.push s!"{cert}: is an AXIOM, not a proven theorem"
-    | some (.opaqueInfo _)  => errs := errs.push s!"{cert}: is OPAQUE, not a proven theorem"
-    | some _                => errs := errs.push s!"{cert}: not a theorem"
-  -- (2) FULL-MODULE ENUMERATION: every theorem in a cert module has a clean cone.
-  --     This is the layer that stops an un-manifested `: False := cheat _`.
+    | some (.axiomInfo _)  => errs := errs.push s!"{cert}: is an AXIOM, not a proven theorem"
+    | some (.opaqueInfo _) => errs := errs.push s!"{cert}: is OPAQUE, not a proven theorem"
+    | some _               => errs := errs.push s!"{cert}: not a theorem"
+
+  -- (2) ENUMERATION over EVERY declaration kind — not just theorems (a
+  --     `def : False` passed the round-4 gate) — in the eight certificate
+  --     modules, AND over this file's own declarations (module index is `none`
+  --     during its own elaboration), so the auditor is not exempt (round-5 R1).
   let manifestNames := manifest.map (·.1)
-  let mut nModuleThms := 0
+  let mut nEnum := 0
   let mut certsSeen : Array Name := #[]
   for (nm, ci) in env.constants.toList do
-    match ci with
-    | .thmInfo _ =>
+    let scope : Option String :=
       match env.getModuleIdxFor? nm with
       | some idx =>
-        if certModules.contains env.header.moduleNames[idx.toNat]! then
-          nModuleThms := nModuleThms + 1
-          if manifestNames.contains nm then certsSeen := certsSeen.push nm
+          let m := env.header.moduleNames[idx.toNat]!
+          if certModules.contains m then some (toString m) else none
+      | none => if nm.isInternal then none else some "Proofs.Audit (this file)"
+    match scope with
+    | none => pure ()
+    | some where_ =>
+      nEnum := nEnum + 1
+      if manifestNames.contains nm then certsSeen := certsSeen.push nm
+      match ci with
+      | .axiomInfo _ =>
+          -- the five oracle axioms live in gen/ (Phase-0 pinned); an axiom
+          -- DECLARED inside an audited module is never acceptable.
+          errs := errs.push s!"AXIOM DECLARED in audited scope: {nm} ({where_})"
+      | _ =>
           let cone := (← collectAxioms nm).toList
           let bad := cone.filter (fun a => !allowedBoundary.contains a)
           unless bad.isEmpty do
-            errs := errs.push s!"UN-AUDITED theorem {nm} (module {env.header.moduleNames[idx.toNat]!}) has disallowed axioms {bad}"
-      | none => pure ()
-    | _ => pure ()
-  -- every manifest cert must actually be a theorem found in a cert module
+            errs := errs.push s!"UN-AUDITED declaration {nm} ({where_}) has disallowed axioms {bad}"
   for cert in manifestNames do
     unless certsSeen.contains cert do
-      errs := errs.push s!"manifest cert {cert} not found as a theorem in any certificate module"
+      errs := errs.push s!"manifest cert {cert} not found in any certificate module"
+
   unless errs.isEmpty do
     throwError "AUDIT FAILED (fail-closed):\n{String.intercalate "\n" errs.toList}"
-  logInfo s!"exact-cone audit PASSED: {manifest.length} certificates (cones + statement fingerprints), {nModuleThms} module theorems enumerated clean; MANIFEST-FINGERPRINT: {manifestFingerprint}"
+
+  -- (3) CANONICAL BLOCK: policy + statements + specification bodies. check.sh
+  --     binds to the SHA-256 of everything between the markers.
+  let mut lines : Array String := #[]
+  lines := lines.push
+    s!"policy|allowedBoundary={String.intercalate "," ((sortNames allowedBoundary).map toString)}|certModules={String.intercalate "," ((sortNames certModules).map toString)}"
+  let mut specs : NameSet := {}
+  for (cert, cone, _) in manifest do
+    let ci := (env.find? cert).get!
+    specs := (closureOf env {} ci.type.getUsedConstants.toList).toList.foldl (·.insert ·) specs
+    lines := lines.push
+      s!"cert|{cert}|cone={String.intercalate "," ((sortNames cone).map toString)}|type={← ppAll ci.type}"
+  for nm in sortNames specs.toList do
+    match env.find? nm with
+    | none => errs := errs.push s!"specification constant vanished: {nm}"
+    | some ci =>
+      let isProp ← Command.liftCoreM <| Meta.MetaM.run' <| Meta.isProp ci.type
+      -- proof irrelevance: a Prop-valued constant contributes its STATEMENT;
+      -- a data definition contributes its BODY — that is where fidelity lives.
+      if isProp then
+        lines := lines.push s!"spec|{nm}|prop|type={← ppAll ci.type}"
+      else
+        match ci with
+        | .defnInfo v => lines := lines.push s!"spec|{nm}|def|value={← ppAll v.value}"
+        | _           => lines := lines.push s!"spec|{nm}|other|type={← ppAll ci.type}"
+  unless errs.isEmpty do
+    throwError "AUDIT FAILED (fail-closed):\n{String.intercalate "\n" errs.toList}"
+
+  logInfo ("AUDIT-MANIFEST-BEGIN\n" ++ String.intercalate "\n" lines.toList ++ "\nAUDIT-MANIFEST-END")
+  -- check.sh prints the certificate list it gets from HERE, not from a hand-kept
+  -- bash array (drill finding: the one authoritative claim string was the one
+  -- thing nothing bound — adding a name to it printed a cert that never existed).
+  logInfo s!"CERTIFICATES: {String.intercalate " " (manifestNames.map toString)}"
+  logInfo s!"exact-cone audit PASSED: {manifest.length} certificates (cones + statements), {specs.toList.length} specification constants pinned, {nEnum} declarations enumerated clean"
 
 end SlhVerify.Audit
 

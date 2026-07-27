@@ -55,3 +55,30 @@ proceeds and is part of every claim.
     255` bound; and signature/public-key deserialization. The certificates
     say nothing about this input handling — a defect there (e.g. a wrong
     separator byte) would be outside every proof.
+    **Concretely, so the consequence is not left to the reader:** that byte is
+    the *only* thing separating the pure and prehash variants. If it were wrong
+    or dropped, a signature issued over the pure M′ would verify as a prehash
+    signature and vice versa — cross-variant signature confusion, a forgery
+    primitive. No certificate in this repository would change.
+11. **The verification harness itself.** The certificates are statements
+    checked by the Lean kernel, but the *button* that reports them is a shell
+    script. Round-5 review demonstrated that stubbing `verification/lean-guard`
+    alone — one repo-tracked file, without touching `check.sh`, the manifest, or
+    the proofs — yields ALL GREEN in 3.6 seconds over deliberately destroyed
+    proofs. `lean-guard` is therefore **sha256-pinned** by check.sh Phase 0
+    (`PROVENANCE.json → harness_integrity_sha256`); it is kept rather than
+    removed because it is the memory cap and machine-wide lock that protect the
+    build machine (a Lean elaboration once reached 12.2 GB and took the host
+    down). Still trusted, and NOT bound by anything the button can check:
+    `check.sh` itself, `~/aeneas-toolchain/env.sh`, the `$AENEAS_HOME` tree
+    (i.e. *which* Aeneas/Lean library the proofs are checked against), `python3`,
+    and the Lean toolchain. An audit executed by a harness cannot defend against
+    an author who edits that harness; the consumer defense is the pinned commit,
+    reviewed at the pin.
+12. **Composition.** The apex does **not** compose the ten loop-fidelity
+    theorems — it is a structural factorization of the extracted verifier around
+    its final equality check and references none of them (it would remain
+    provable if one were deleted). The ten are independent, individually
+    human-reviewed lemmas. Round-5 review makes this worth stating here rather
+    than only in the README: each of the ten is individually meaningful only to
+    the extent a human has read its reference fold against FIPS 205.

@@ -13,8 +13,16 @@
          · verify_mono.oracle.h_msg  — H_msg (message digest)
        These are SHA-256-based; their correctness against FIPS 180-4 is the
        standing hash-oracle boundary (see TRUSTED-BASE.md). The apex
-       certificate will carry EXACTLY these five beyond Lean's three kernel
+       certificate carries EXACTLY these five beyond Lean's three kernel
        axioms — nothing else.
+       NOTE, so a future reader is not misled: these are five AXIOMS but only
+       FOUR distinct Rust primitives. `oracle.t_l` and `oracle.t_len` both
+       delegate to `crate::hashers::sha2_cat_1::t_l` (src/verify_mono.rs) —
+       modelling them as two INDEPENDENT axioms is deliberately conservative
+       (a theorem proved for unrelated oracles also holds when they coincide),
+       but the model cannot express that they agree. Note also the naming
+       inversion against FIPS 205: `oracle.t_l` models T_len (WOTS+ pk
+       compression) and `oracle.t_len` models T_k (FORS root compression).
 
    (2) TRANSPILER PLUMBING — core-library externals Aeneas emits for this
        extraction config. These carry NO cryptographic content. The u32
@@ -28,11 +36,14 @@
        IterMut became index loops, so the Take::next axiom was deleted too.
        Remaining as axioms on the whole model: the FIVE SHA-2 verify-path
        oracles and three zeroize blanket impls (never on the verify path) —
-       nothing else. The #print axioms audit (fail-closed, wrap-safe since the
-       external-review fix of 2026-07-24) confirms only the five oracles + the
-       kernel three survive in any certificate cone.
+       nothing else. The in-Lean audit (Proofs/Audit.lean, `collectAxioms`,
+       round 5) confirms only the five oracles + the kernel three appear in any
+       certificate cone, and that no other declaration in the audited modules
+       reaches outside that boundary. The zeroize axioms are deliberately
+       absent from the audit's `allowedBoundary`, so if one ever reached a cone
+       the build would fail. THIS FILE is hand-maintained (Aeneas does not
+       regenerate it) and its bytes are sha256-pinned by check.sh Phase 0.
    ────────────────────────────────────────────────────────────────────────────── -/
--- This is a template file: rename it to "FunsExternal.lean" and fill the holes.
 import Aeneas
 import SlhVerify.Types
 open Aeneas Aeneas.Std Result ControlFlow Error

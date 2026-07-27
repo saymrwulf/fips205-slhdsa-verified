@@ -5,16 +5,35 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: eleven certificates over the extracted verify model (external review round 2 applied)
+## STATUS: eleven certificates over the extracted verify model (external review rounds 1–5 applied)
 
-`verification/check.sh` is **green** (exit 0): the model compiles, the
-proofs compile, and the axiom audit passes. The audit now runs **inside
-Lean** (`verification/Proofs/Audit.lean`): it reads each certificate's cone
-from the kernel via `collectAxioms` and asserts SET EQUALITY against that
-certificate's expected boundary — so an *added* axiom and a silently
-*dropped* oracle dependency both fail, with no text parsing to misparse
-(external review round 2, 2026-07-24, replaced the earlier `#print axioms`
-text parser, which could fail open on an empty or truncated report).
+`verification/check.sh` is **green** (exit 0): the model compiles, the proofs
+compile, and the audit passes. The audit runs **inside Lean**
+(`verification/Proofs/Audit.lean`) and binds four things, each added because an
+external reviewer *demonstrated* the button going green without it:
+
+- **axiom cones** — each certificate's cone is read from the kernel via
+  `collectAxioms` and must equal its expected set EXACTLY, so an added axiom
+  and a silently dropped oracle both fail (round 2 retired a text parser that
+  could fail open on an empty or truncated report);
+- **coverage** — EVERY declaration in the eight certificate modules, of every
+  kind, and in `Audit.lean` itself, must stay inside the axiom boundary (rounds
+  4–5: an un-manifested `theorem : False`, then a `def : False`, then one inside
+  the auditor, each passed a gate that checked only the listed certificates);
+- **statements and specifications** — `check.sh` binds to the **SHA-256** of a
+  canonical block containing the policy constants, every certificate's
+  fully-elaborated statement, and every reference fold's fully-elaborated
+  *body*. Round 5 showed why the last part is essential: redefining a fold to
+  *be* the extracted loop left every earlier fingerprint bit-identical while the
+  certificate degenerated to "the loop equals the loop";
+- **bytes** — Phase 0 sha256-pins the four model files and the compiler harness
+  `lean-guard`, purges stale `.olean`s, and forbids stray `.lean` files, so the
+  verdict depends on committed bytes rather than build-directory state.
+
+What the button still does **not** bind is stated plainly in
+[TRUSTED-BASE.md](TRUSTED-BASE.md) item 11 — `check.sh` itself, the toolchain
+env, and `$AENEAS_HOME`. `verification/check-selftest.sh` runs the reviewers'
+own exploits back against the gate; all are rejected.
 
 **What is actually established** — eleven Lean theorems about the
 Aeneas-generated model of the **monomorphic `verify_mono` compatibility
@@ -50,6 +69,17 @@ cannot translate the deployed `Hashers` function-pointer struct):
 - **Not closed-form FIPS 205 correctness:** the folds are transliterations of
   the extracted loops (the hash primitives stay opaque); nothing here relates
   the recomputed root to a mathematical SLH-DSA specification.
+- **Read every loop certificate as "visible", not "correct".** This follows
+  from the previous point but is worth stating on its own, because the per-
+  certificate descriptions below are easy to over-read. Each reference fold is
+  built from the *same* extracted primitives the loop calls, so any defect in
+  the extracted code is faithfully copied into the fold and the theorem still
+  holds. What is machine-checked is the loop's *scaffolding* — trip count,
+  index arithmetic, state threading, argument order, branch structure. Whether
+  the address schedule, the Merkle sibling order, or the FORS leaf index match
+  FIPS 205 is a **human reading step**, not a proved one. (Round-5 review makes
+  this sharper: the certificates are individually meaningful only to the extent
+  someone has read each fold against the standard — see TRUSTED-BASE item 12.)
 
 This is a real **intermediate** verification layer, not an end-to-end
 formal verification of the deployed verifier. After de-plumbing rounds 1+2
@@ -91,10 +121,16 @@ The trust base and residual assumptions are stated in
   `xmss_pk_from_sig_free_loop` equals the fold that, at step k, sets the
   tree height to k+1, tests bit k of the leaf index, and on an even bit
   halves the tree index and hashes H(node ∥ auth[k]), on an odd bit sets
-  the tree index to (i−1)/2 and hashes H(auth[k] ∥ node). This pins the
+  the tree index to (i−1)/2 and hashes H(auth[k] ∥ node). This makes the
   Merkle sibling ORDER (the even/odd rule), the tree-height/tree-index
-  address schedule, and the auth-path indexing — the heart of Merkle-path
-  verification. Cone: kernel three + `verify_mono.oracle.h` (the first
+  address schedule, and the auth-path indexing VISIBLE in the certificate —
+  **it does not establish them as correct.** `xmssFoldN` calls the same
+  extracted `set_tree_height`/`get_tree_index`/`oracle.h` that the loop body
+  calls, so a swapped sibling order would be copied into the fold and the
+  theorem would still hold. Read that as: the certificate pins what the
+  extracted code *does* at each step; whether that matches FIPS 205
+  Algorithm 10 is a human reading step. Cone: kernel three +
+  `verify_mono.oracle.h` (the first
   certificate where H enters; F does not — the loop runs above the WOTS+
   computation).
 
@@ -103,8 +139,9 @@ The trust base and residual assumptions are stated in
   at layer j, splits the tree index (idx_leaf = idx_tree mod 2^h' by
   mask+cast, then idx_tree >>= h'), sets the layer address to j and the
   tree address to the shifted index, and recomputes the node through
-  `xmss_pk_from_sig` on the j-th XMSS signature. This pins the layer
-  schedule of hypertree verification; the final node = pk_root comparison
+  `xmss_pk_from_sig` on the j-th XMSS signature. This makes the layer
+  schedule of hypertree verification visible in the certificate (same
+  transliteration caveat as above); the final node = pk_root comparison
   sits one bind above, in `ht_verify_free`, and belongs to the apex
   composition. Cone: kernel three + `verify_mono.oracle.{f, h, t_l}` —
   the full WOTS+/XMSS machinery referenced through the fold, and nothing
@@ -124,9 +161,9 @@ re-run green after every source patch.
 
 - **`fips205.fors_inner_loop_eq`** + **`fips205.fors_outer_loop_eq`**
   (Algorithm 17, FORS pk-from-sig): a nested loop, split into two theorems.
-  The inner one pins the auth-path Merkle fold for a single FORS tree (bit
+  The inner one equates the auth-path Merkle fold for a single FORS tree (bit
   source `indices[i] >> j`, `H` in the even/odd sibling order) — cone
-  kernel-3 + `oracle.h`. The outer one pins the K-tree fold: for each tree
+  kernel-3 + `oracle.h`. The outer one equates the K-tree fold: for each tree
   compute the leaf with `F` at index `(i<<a)+indices[i]`, run the inner
   Merkle loop, write `root[i]` — cone kernel-3 + `oracle.{f, h}`. Split into
   two files under the memory discipline; the outer step lemma closes by
@@ -233,10 +270,16 @@ this repository was created:
   model from the mono root; charon + aeneas both exit 0, and
   `verification/check.sh` compiles the result. At this compat-patch commit
   the only change to pre-existing code was two lines wiring the new module;
-  the generic paths and all twelve parameter sets stayed untouched. (The
-  later de-plumbing commits — rounds 1 and 2 — then made further local edits
-  to `helpers.rs`/`wots.rs`, each documented and differential-tested; see the
-  snapshot history at head `797b4ef`.)
+  the generic paths and all twelve parameter sets stayed untouched. **That
+  scoping does not extend to the later de-plumbing commits, and the difference
+  matters:** round 1 (`6f6a9d6`) touched only the private `verify_mono.rs`, but
+  round 2 (`bea1051`) rewrote `to_int` and `base_2b` in **`src/helpers.rs`,
+  which the DEPLOYED generic verify path and the SIGNING path also call**
+  (`slh.rs`, `wots.rs`, `fors.rs`). So the snapshot's deployed verifier — the
+  one the differential test compares against — is itself patched relative to
+  upstream `30bac08`. `src/wots.rs` was never modified by any patch commit (an
+  earlier revision of this README wrongly named it). See the snapshot history
+  at head `797b4ef` and TRUSTED-BASE.md item 7.
 
 ## What is claimed (the button is green)
 
