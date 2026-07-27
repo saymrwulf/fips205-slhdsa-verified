@@ -93,3 +93,68 @@ test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 running 37 tests
 test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.89s
 ```
+
+## INDEPENDENT RUN — executed by the operator (the round-3 blocker)
+
+Round 3's single remaining blocker was a recorded toolchain session
+executed by a party other than the author agent. The operator ran the
+block below personally on 2026-07-27 (a first attempt on 2026-07-24
+failed with a memory-clamped lean abort on a loaded desktop — an
+environment condition, diagnosed from ~/.lean-guard.log and addressed
+by the lean-guard stderr-diagnostics commit 62d7ed1; the proofs were
+never implicated). Result: check.sh ALL GREEN at 62d7ed1 (11
+certificates, exact-cone audit passed) and extract.sh regeneration
+byte-identical against fips205-source @ 797b4ef — both sha256 values
+match PROVENANCE.json. Transcript verbatim from the operator's shell:
+
+```
+INDEPENDENT RUN — executed by the operator, 20260727T125816Z
+proof repo @ 62d7ed12091bb9bd267724b698f663c00ddc3210
+fips205-slhdsa-verified — check
+===============================
+=== Phase 1: compile the extracted model ===
+  · gen/SlhVerify/TypesExternal
+  · gen/SlhVerify/Types
+  · gen/SlhVerify/FunsExternal
+  · gen/SlhVerify/Funs
+=== Phase 2: compile the proofs ===
+  · ChainSpec
+  · WotsSpec
+  · XmssSpec
+  · HtSpec
+  · ForsInnerSpec
+  · ForsOuterSpec
+  · InputPrepSpec
+  · ApexSpec
+=== Phase 3: axiom audit (exact cone per certificate — inside Lean) ===
+  ✓ exact-cone audit PASSED: each of the 11 certificate cones == its expected boundary set
+
+ALL GREEN — model compiles, proofs compile, and every certificate cone
+equals EXACTLY the three kernel axioms plus its documented SHA-2 oracles.
+Certificates proven: fips205.chain_free_loop_eq fips205.wots_loop1_eq fips205.xmss_loop_eq fips205.ht_loop_eq fips205.fors_inner_loop_eq fips205.fors_outer_loop_eq fips205.to_int_loop_eq fips205.to_byte_loop_eq fips205.wots_csum_loop_eq fips205.base2b_outer_loop_eq fips205.slh_verify_128s_accepts_iff
+--- extract.sh byte-identity ---
+[0/2] provenance OK: fips205-source @ 797b4ef26338 (clean)
+[1/2] charon: Rust -> LLBC (monomorphic SHA2-128s verify cone;
+        crate::verify_mono::oracle is the opaque SHA-2 boundary)
+   Compiling fips205 v0.4.1 (/home/oho/GitClone/FormalVerification/sources/fips205-source)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.54s
+[2/2] aeneas: LLBC -> Lean (split files, SlhVerify.* modules;
+        hand-maintained TypesExternal.lean / FunsExternal.lean are
+        NOT overwritten once they exist)
+[[92mInfo[39m ] Imported: SlhVerify.llbc
+[?25lApplied prepasses:  [------------------------------------------------]   0/142 ⠋Applied prepasses:  [------------------------------------------------]   1/142 ⠋Applied prepasses:  [###---------------------------------------------]  11/142 ⠋Applied prepasses:  [#################-------------------------------]  52/142 ⠙Applied prepasses:  [########################################--------] 120/142 ⠙Applied prepasses:  [################################################] 142/142 ✔️
+[?25h[?25lTranslated globals:  [-------------------------------------------------]  0/10 ⠋Translated globals:  [#################################################] 10/10 ✔️
+[?25h[?25lTranslated opaque functions:  [----------------------------------------]  0/76 ⠋Translated opaque functions:  [########################################] 76/76 ✔️
+[?25h[?25lTranslated transparent functions:  [-----------------------------------]  0/42 ⠋Translated transparent functions:  [-----------------------------------]  1/42 ⠙Translated transparent functions:  [#######----------------------------]  9/42 ⠹Translated transparent functions:  [########---------------------------] 10/42 ⠹Translated transparent functions:  [##########-------------------------] 12/42 ⠹Translated transparent functions:  [##########-------------------------] 13/42 ⠹Translated transparent functions:  [###########------------------------] 14/42 ⠸Translated transparent functions:  [############-----------------------] 15/42 ⠸Translated transparent functions:  [##############---------------------] 17/42 ⠸Translated transparent functions:  [###############--------------------] 19/42 ⠸Translated transparent functions:  [################-------------------] 20/42 ⠼Translated transparent functions:  [##################-----------------] 22/42 ⠼Translated transparent functions:  [####################---------------] 24/42 ⠼Translated transparent functions:  [#####################--------------] 26/42 ⠴Translated transparent functions:  [######################-------------] 27/42 ⠴Translated transparent functions:  [#######################------------] 28/42 ⠦Translated transparent functions:  [########################-----------] 29/42 ⠦Translated transparent functions:  [#########################----------] 30/42 ⠦Translated transparent functions:  [#########################----------] 31/42 ⠧Translated transparent functions:  [###########################--------] 33/42 ⠇Translated transparent functions:  [#############################------] 35/42 ⠏Translated transparent functions:  [##############################-----] 36/42 ⠏Translated transparent functions:  [##############################-----] 37/42 ⠋Translated transparent functions:  [###############################----] 38/42 ⠙Translated transparent functions:  [################################---] 39/42 ⠹Translated transparent functions:  [#################################--] 40/42 ⠸Translated transparent functions:  [##################################-] 41/42 ⠸Translated transparent functions:  [###################################] 42/42 ⠼Translated transparent functions:  [###################################] 42/42 ✔️
+[?25h[?25lTranslated trait declarations:  [--------------------------------------]  0/33 ⠋Translated trait declarations:  [##############------------------------] 13/33 ✔️
+[?25h[?25lTranslated trait impls:  [---------------------------------------------]  0/50 ⠋Translated trait impls:  [######################-----------------------] 25/50 ✔️
+[?25h[?25lPost-processed translated opaque functions:  [-------------------------]  0/76 ⠋Post-processed translated opaque functions:  [-------------------------]  1/76 ⠙Post-processed translated opaque functions:  [#########################] 76/76 ✔️
+[?25h[?25lPost-processed translated transparent functions:  [--------------------]  0/42 ⠋Post-processed translated transparent functions:  [--------------------]  1/42 ⠙Post-processed translated transparent functions:  [###-----------------]  7/42 ⠙Post-processed translated transparent functions:  [####----------------]  9/42 ⠙Post-processed translated transparent functions:  [####----------------] 10/42 ⠹Post-processed translated transparent functions:  [#####---------------] 11/42 ⠹Post-processed translated transparent functions:  [#####---------------] 12/42 ⠸Post-processed translated transparent functions:  [######--------------] 13/42 ⠸Post-processed translated transparent functions:  [######--------------] 14/42 ⠸Post-processed translated transparent functions:  [#######-------------] 15/42 ⠼Post-processed translated transparent functions:  [#######-------------] 16/42 ⠼Post-processed translated transparent functions:  [########------------] 17/42 ⠼Post-processed translated transparent functions:  [#########-----------] 19/42 ⠴Post-processed translated transparent functions:  [#########-----------] 20/42 ⠴Post-processed translated transparent functions:  [##########----------] 21/42 ⠴Post-processed translated transparent functions:  [##########----------] 22/42 ⠦Post-processed translated transparent functions:  [##########----------] 23/42 ⠦Post-processed translated transparent functions:  [###########---------] 25/42 ⠦Post-processed translated transparent functions:  [############--------] 26/42 ⠧Post-processed translated transparent functions:  [############--------] 27/42 ⠧Post-processed translated transparent functions:  [#############-------] 28/42 ⠧Post-processed translated transparent functions:  [##############------] 30/42 ⠇Post-processed translated transparent functions:  [###############-----] 32/42 ⠇Post-processed translated transparent functions:  [###############-----] 33/42 ⠏Post-processed translated transparent functions:  [################----] 34/42 ⠏Post-processed translated transparent functions:  [#################---] 37/42 ⠋Post-processed translated transparent functions:  [##################--] 38/42 ⠋Post-processed translated transparent functions:  [##################--] 39/42 ⠙Post-processed translated transparent functions:  [###################-] 40/42 ⠹Post-processed translated transparent functions:  [###################-] 41/42 ⠸Post-processed translated transparent functions:  [####################] 42/42 ⠼Post-processed translated transparent functions:  [####################] 42/42 ✔️
+[?25h[[92mInfo[39m ] Generated: gen/SlhVerify/Types.lean
+[[92mInfo[39m ] Generated: gen/SlhVerify/FunsExternal_Template.lean
+[[92mInfo[39m ] Generated: gen/SlhVerify/Funs.lean
+[[92mInfo[39m ] Total execution time: 8.980301 seconds
+Done. Now run ./check.sh (Phase 1: the regenerated model must type-check).
+db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384  gen/SlhVerify/Types.lean
+7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f  gen/SlhVerify/Funs.lean
+```
