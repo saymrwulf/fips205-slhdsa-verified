@@ -4,10 +4,13 @@
    explicit s-fold application of the hash F, with the hash-address set to
    i, i+1, …, i+s−1 in turn. This rules out — machine-checked, for the
    monomorphic SHA2-128s `verify_mono` path (a private facade, not the
-   deployed generic verifier) — an off-by-one loop bound, a wrong address
-   field, and wrong threading. F stays opaque
-   (verify_mono.oracle.f), so the certificate cone is the three kernel axioms
-   + oracle.f, and nothing else (audited by check.sh Phase 3).
+   deployed generic verifier) — an off-by-one loop bound and wrong state
+   threading. It does NOT rule out a wrong ADRS field: `chainFoldN` calls the
+   same extracted `set_hash_address` the loop does, so a wrong field would be
+   copied into the fold and the theorem would still hold — the field is made
+   VISIBLE in the certificate (a transliteration), not excluded by it. F stays
+   opaque (verify_mono.oracle.f), so the certificate cone is the three kernel
+   axioms + oracle.f, and nothing else (audited by check.sh Phase 3).
 
    The proof: an induction on the step count. `chain_step` is one loop step =
    one fold step, proven by unfolding the Aeneas `loop` fixpoint one turn

@@ -158,3 +158,32 @@ Done. Now run ./check.sh (Phase 1: the regenerated model must type-check).
 db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384  gen/SlhVerify/Types.lean
 7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f  gen/SlhVerify/Funs.lean
 ```
+
+## Round-4 hardening (third reviewer, 2026-07-27)
+
+The third reviewer demonstrated three fail-opens OUTSIDE the cone check
+(F1 unbound cert set / un-manifested theorem; F2 statements unbound; F3
+model bytes unbound). All fixed. check.sh green with the hardened gate,
+and the adversarial self-test now rejects eight attacks including the two
+the reviewer used to make the button green over a repo proving False:
+
+```
+check.sh: ALL GREEN — MANIFEST-FINGERPRINT: 13660980750615609973
+Phase 0 model-byte integrity: 4/4 gen files match PROVENANCE.json
+Phase 3 audit: 11 certs (cones + statement fingerprints), 196 module theorems enumerated clean
+
+check-selftest: attacking the gates
+====================================
+✓ attack 1 rejected (dead-file gate)
+✓ attack 2 rejected (extra-axiom detection — evil_ax named)
+✓ attack 3 rejected (missing-oracle detection — exact cone, not subset)
+✓ attack 4 rejected (existence check — vanished cert cannot pass as 0-axiom)
+✓ attack 5 rejected (module enumeration — an un-manifested False theorem cannot pass)
+✓ attack 6 rejected (statement fingerprint — a gutted statement of the same cone cannot pass)
+✓ attack 7 rejected (Phase 0 model-byte integrity — a hand-edited model cannot compile)
+✓ attack 8 rejected (manifest fingerprint — a silently-dropped cert cannot pass)
+
+SELFTEST GREEN: the gate rejects dead files, extra axioms, dropped oracles,
+vanished certs, un-manifested False theorems, gutted statements, hand-edited
+models, and deleted manifest rows.
+```

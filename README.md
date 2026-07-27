@@ -62,7 +62,14 @@ The trust base and residual assumptions are stated in
   extracted `chain_free` loop equals the explicit s-fold hash chain, with
   the hash address set to i, i+1, …, i+s−1 in turn. This rules out —
   machine-checked, for the monomorphic SHA2-128s `verify_mono` path — an
-  off-by-one loop bound, a wrong address field, and wrong threading. Its
+  off-by-one loop bound and wrong state threading. (It does **not** rule out
+  a wrong ADRS field: the reference fold is built from the same extracted
+  `set_hash_address` primitive the loop calls, so a wrong field would be
+  faithfully copied into the fold and the theorem would still hold. What the
+  certificate pins is what the extracted code does at each index, so a wrong
+  field is *visible* in the certificate, not *excluded* by it — the mapping
+  onto FIPS 205 Alg 5 is a human reading step, consistent with "the folds are
+  transliterations of the extracted loops" above.) Its
   `#print axioms` cone is **exactly** `[propext, Classical.choice,
   Quot.sound, verify_mono.oracle.f]` — the three kernel axioms plus the one
   hash oracle it touches, and nothing else (no transpiler plumbing; the u32
@@ -170,15 +177,24 @@ same boundary.
 
 ## Scope
 
-**Verify path only.** The extraction cone, mirroring FIPS 205's own
-algorithm tree:
+**Verify path only, rooted at `slh_verify_internal`.** The extraction root
+is `verify_mono::slh_verify_128s`, which is `slh_verify_internal_free(M′, sig,
+pk)` — it takes the already-assembled message digest input **M′ as an
+argument**. So the covered cone is:
 
 ```
-slh_verify -> slh_verify_internal
+slh_verify_internal(M′, …)         ← the extraction ROOT (M′ is an input)
   -> fors_pk_from_sig
   -> ht_verify -> xmss_pk_from_sig -> wots_pk_from_sig -> chain
 ```
 
+Everything **above** this root, in `slh_verify`/`verify` (`src/lib.rs`), is
+OUT of scope and is stated as such in [TRUSTED-BASE.md](TRUSTED-BASE.md): M′
+assembly, the pure-vs-prehash **domain-separator byte** (`0u8` for `verify`,
+`1u8` for `hash_verify` — the entire cross-variant separation), the
+`ctx.len() > 255` check, and signature/public-key deserialization. A reader
+must NOT read `slh_verify -> slh_verify_internal` as "the top of the verify
+path is covered" — it is not; the top-of-path input handling is trusted base.
 Key generation and signing are out of scope (trusted base), exactly as
 ed25519 signing was. The five verify-path hash oracles (`h_msg, f, h,
 t_l, t_len` — SHA-2 instantiations; `prf`/`prf_msg` are sign-side only

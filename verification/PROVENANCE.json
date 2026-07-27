@@ -32,5 +32,12 @@
     "gen/SlhVerify/FunsExternal.lean"
   ],
   "byte_identical_regeneration_verified": "2026-07-24",
-  "audit_gate": "verification/Proofs/Audit.lean — in-Lean exact per-certificate cone equality via collectAxioms (fail-closed); compiled by check.sh Phase 3; adversarially exercised by check-selftest.sh"
+  "model_integrity_sha256": {
+    "_comment": "All four Lean model files check.sh Phase 0 pins before compiling anything — the two aeneas-generated files AND the two hand-maintained *External files (which carry the five oracle axioms and the Step defs). A hand-edit of the model fails the build here (round-4 reviewer F3).",
+    "gen/SlhVerify/TypesExternal.lean": "37958beb7c90b649497a20b0802f98f0fb2d975c245eca956d7396af74d7759f",
+    "gen/SlhVerify/FunsExternal.lean": "73fa2a7d14b35bb6b6746534e88cba527d0e17f154f7a7d841a9c519befeea47",
+    "gen/SlhVerify/Types.lean": "db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384",
+    "gen/SlhVerify/Funs.lean": "7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f"
+  },
+  "audit_gate": "verification/Proofs/Audit.lean — in-Lean audit (round 4): per-certificate exact cone equality (collectAxioms) + elaborated-statement fingerprint (Expr.hash) + full enumeration of every theorem in the eight certificate modules (each cone ⊆ boundary, so an un-manifested theorem cannot smuggle an axiom) + a manifest fingerprint check.sh binds to. Fail-closed; adversarially exercised by check-selftest.sh (attacks 1–6). check.sh Phase 0 pins the model bytes to model_integrity_sha256 above."
 }

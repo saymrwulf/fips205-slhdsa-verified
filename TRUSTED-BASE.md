@@ -45,3 +45,13 @@ proceeds and is part of every claim.
    `verify_mono` facade. The bridge to upstream's generic `pk.verify()` is
    the finite in-snapshot differential test, not a machine-checked
    refinement.
+10. **Everything above the extraction root.** The root is
+    `verify_mono::slh_verify_128s = slh_verify_internal_free(M′, sig, pk)`,
+    which takes the message-digest input **M′ as an argument**. The code in
+    `slh_verify`/`verify` (`src/lib.rs`) that runs *before* this root is NOT
+    covered by any certificate: the assembly of M′; the pure-vs-prehash
+    **domain-separator byte** (`0u8` for `verify` vs `1u8` for `hash_verify`
+    — the whole cross-variant domain separation); the FIPS-205 `ctx.len() >
+    255` bound; and signature/public-key deserialization. The certificates
+    say nothing about this input handling — a defect there (e.g. a wrong
+    separator byte) would be outside every proof.
