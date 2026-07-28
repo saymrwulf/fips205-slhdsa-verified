@@ -349,3 +349,104 @@ statements, hand-edited models, dropped manifest rows, widened policy,
 specification folds redefined to the loop, a False-proof in the auditor,
 a stubbed harness, and stray modules.
 ```
+
+## Round-7 fixes — author-agent run, 20260728T110335Z, proof repo @ (this commit)
+
+Captured with `tee`. NOT independently executed — but note that the third
+reviewer DID independently run check.sh and check-selftest.sh to green at
+dce0473 and 1e50295 on its own hardware and toolchain build, and recomputed
+the audit digest outside check.sh. What remains author-attested-only is
+extract.sh's byte-identical regeneration, which no reviewer has observed.
+
+PIN ROTATIONS: source 3153988 -> c945821 (test/vector only; all four model
+files verified byte-identical across it). No model or harness pin rotated.
+
+NOTE (round-7 NEW-16): the entire empirical bridge runs on STABLE Rust —
+no Charon, Aeneas, OCaml or pinned nightly required. The nightly pin exists
+only to align `charon cargo`. A third party can reproduce all 137 bridge
+cases with cargo alone.
+
+### check.sh
+```
+fips205-slhdsa-verified — check
+===============================
+=== Phase 0: build hygiene + model/harness integrity ===
+  ✓ Proofs/Audit.lean
+  ✓ gen/SlhVerify/Funs.lean
+  ✓ gen/SlhVerify/FunsExternal.lean
+  ✓ gen/SlhVerify/Types.lean
+  ✓ gen/SlhVerify/TypesExternal.lean
+  ✓ lean-guard
+=== Phase 1: compile the extracted model ===
+  · gen/SlhVerify/TypesExternal
+  · gen/SlhVerify/Types
+  · gen/SlhVerify/FunsExternal
+  · gen/SlhVerify/Funs
+=== Phase 2: compile the proofs ===
+  · ChainSpec
+  · WotsSpec
+  · XmssSpec
+  · HtSpec
+  · ForsInnerSpec
+  · ForsOuterSpec
+  · InputPrepSpec
+  · ApexSpec
+=== Phase 3: in-Lean audit (cones + statement fingerprints + enumeration) ===
+  ✓ exact-cone audit PASSED
+  ✓ audit-manifest digest matches (sha256 d83e297a49094c97…)
+
+ALL GREEN — model compiles, proofs compile, and every certificate cone
+equals EXACTLY the three kernel axioms plus its documented SHA-2 oracles.
+Certificates proven: fips205.chain_free_loop_eq fips205.wots_loop1_eq fips205.xmss_loop_eq fips205.ht_loop_eq fips205.fors_inner_loop_eq fips205.fors_outer_loop_eq fips205.to_int_loop_eq fips205.to_byte_loop_eq fips205.wots_csum_loop_eq fips205.base2b_outer_loop_eq fips205.slh_verify_128s_accepts_iff
+```
+
+### cargo test on STABLE rust (rustc 1.95)
+```
+
+running 6 tests
+deployed vs NIST ACVP 128s (prehash): 3 executed, 4 wrong-length, 7 skipped (hash function not implemented by this crate)
+test verify_mono::tests::deployed_matches_nist_acvp_128s_prehash ... ok
+mono vs NIST ACVP 128s (internal): 10 executed against the PROVED path, 4 rejected at deserialization (above the extraction root)
+test verify_mono::tests::mono_matches_nist_acvp_128s_internal ... ok
+mono+deployed vs NIST ACVP 128s (external pure): 10 executed (9 with a NON-EMPTY context), 4 rejected at deserialization
+test verify_mono::tests::mono_matches_nist_acvp_128s_external_pure ... ok
+test verify_mono::tests::mono_matches_deployed_verify ... ok
+test slh_dsa_sha2_128s::tests::simple_round_trips ... ok
+randomized differential bridge: 108 assertion points
+test verify_mono::tests::mono_matches_deployed_randomized ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 25.59s
+
+```
+
+### check-selftest.sh (17 attacks + digest-coverage check)
+```
+check-selftest: attacking the gates
+====================================
+✓ attack 1 rejected (dead-file gate)
+✓ attack 2 rejected (extra-axiom detection — evil_ax named)
+✓ attack 3 rejected (missing-oracle detection — exact cone, not subset)
+✓ attack 4 rejected (existence check — a vanished cert cannot pass as 0-axiom)
+✓ attack 5 rejected (enumeration — an un-manifested False theorem cannot pass)
+✓ attack 6 rejected (statement check — a gutted statement of the same cone cannot pass)
+✓ attack 7 rejected (Phase 0 model-byte integrity)
+✓ attack 8 rejected (audit-manifest digest — a silently-dropped cert cannot pass)
+✓ attack 9 rejected (digest covers allowedBoundary — the policy cannot be widened silently)
+✓ attack 10 rejected (a specification fold cannot be silently redefined to the loop)
+✓ attack 11 rejected (enumeration covers every declaration kind, not just theorems)
+✓ attack 12 rejected (the auditor audits itself — no exemption)
+✓ attack 13 rejected (Phase 0 pins lean-guard — the harness is in the TCB and bound)
+✓ attack 14 rejected (no .lean may sit outside gen/ and Proofs/)
+✓ attack 16 rejected (Phase 0 purges every .olean under verification/, so an
+  orphan compiled module with no source cannot satisfy an import)
+✓ attack 17 rejected (Phase 0 pins Audit.lean — its LOGIC cannot be silently switched off)
+✓ attack 18 rejected (the pin map cannot be silently shortened — required names are in check.sh)
+✓ check 15 passed (the hashed block carries all 12 reference-fold bodies,
+  including the recursive _f companions and their extracted-primitive calls)
+
+SELFTEST GREEN: 17 attacks rejected + digest-coverage check — dead files, extra axioms, dropped
+oracles, vanished certs, un-manifested False theorems AND defs, gutted
+statements, hand-edited models, dropped manifest rows, widened policy,
+specification folds redefined to the loop, a False-proof in the auditor,
+a stubbed harness, stray modules, and a shortened pin map.
+```

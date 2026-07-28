@@ -83,6 +83,25 @@ files.update({k: v for k, v in prov.get("harness_integrity_sha256", {}).items() 
 if not files:
     print("  no integrity map in PROVENANCE.json (fail-closed)"); sys.exit(1)
 bad = 0
+# WHICH files must be pinned is policy, and policy belongs in the root of trust —
+# not in the map being consulted. Round-6 review (NEW-13) demonstrated the gap:
+# PROVENANCE.json is a tracked file that nothing pins, and the only completeness
+# test was `if not files`, so deleting the whole `harness_integrity_sha256` key
+# silently un-pinned BOTH lean-guard and Proofs/Audit.lean with no diagnostic —
+# after which the round-6 NEW-7 logic mutation ran to ALL GREEN over a repository
+# proving False, digest byte-identical. The model side self-protected only
+# because the gen/ set assertion below derives its requirement from the
+# filesystem; the harness side had no such cross-check.
+REQUIRED = {
+    "lean-guard", "Proofs/Audit.lean",
+    "gen/SlhVerify/Types.lean", "gen/SlhVerify/Funs.lean",
+    "gen/SlhVerify/TypesExternal.lean", "gen/SlhVerify/FunsExternal.lean",
+}
+missing = REQUIRED - set(files)
+if missing:
+    for m in sorted(missing):
+        print(f"  ✗ pin map INCOMPLETE — no entry for {m}")
+    bad = 1
 for rel, want in sorted(files.items()):
     p = os.path.join(here, rel)
     if not os.path.exists(p):

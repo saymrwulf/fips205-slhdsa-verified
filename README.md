@@ -66,13 +66,17 @@ cannot translate the deployed `Hashers` function-pointer struct):
 - **Not the deployed public verifier:** the proved subject is the private
   `verify_mono` facade; the bridge to upstream's generic `pk.verify()` is a
   finite **differential test**, not a machine-checked refinement. Its size is
-  now stated rather than left to the word "finite": **131 assertion points**,
-  of which **20 are NIST ACVP SHA2-128s known-answer tests run against the
-  proved path** (see TRUSTED-BASE.md item 9). Until 2026-07-28 it was nine
-  points from a single seed, and this parameter set had *no* NIST verification
-  coverage at all — the vectors vendored upstream contain no SHA2-128s sigVer
-  group, so the 128s groups were extracted from the official NIST ACVP-Server
-  set (provenance recorded in the vector file).
+  now stated rather than left to the word "finite": **137 evaluated
+  input/verdict cases on the proved path**, of which **20 are NIST ACVP
+  SHA2-128s known-answer tests** (9 retained original + 108 randomized + 10 NIST
+  internal + 10 NIST external-pure; see TRUSTED-BASE.md item 9 for the table and
+  for the 3 deployed-only prehash cases counted separately). Until 2026-07-28 it
+  was nine cases from a single seed, and this parameter set had *no* NIST
+  verification coverage at all — the vectors vendored upstream contain no
+  SHA2-128s sigVer group, so the 128s groups were extracted from the official
+  NIST ACVP-Server set by a committed, re-runnable script
+  (`tests/nist_acvp_vectors/extract_sha2_128s.py` in the snapshot repo) that
+  pins the upstream hash and fails closed on any drift.
 - **Not closed-form FIPS 205 correctness:** the folds are transliterations of
   the extracted loops (the hash primitives stay opaque); nothing here relates
   the recomputed root to a mathematical SLH-DSA specification.
@@ -314,7 +318,12 @@ one — appears in its cone.
 ## Discipline
 
 Every Lean compile in this repository runs under `verification/lean-guard`
-(memory-capped, machine-wide serialized). Extraction is reproducible: the
+(memory-capped, machine-wide serialized). It is Linux-oriented but **degrades
+gracefully**: when `systemd-run` is unavailable it falls back to Lean's own
+`-M` cap, so the button runs on a stock Linux box without cgroup support — an
+external reviewer has run it green that way. Note also that the *empirical
+bridge* (`cargo test` in the snapshot repo) needs no Lean toolchain at all and
+runs on stable Rust. Extraction is reproducible: the
 full pin set (source commit, Charon/Aeneas commits + toolchain channel, Lean
 and OCaml versions) is in [verification/PROVENANCE.json](verification/PROVENANCE.json);
 `verification/extract.sh` refuses to run against a wrong-commit or dirty

@@ -31,7 +31,7 @@ proceeds and is part of every claim.
 7. **Aeneas-compat + de-plumbing patch surface.** The fn-pointer-to-named-
    oracle rewrite in `fips205-source` (phase 1) and the two de-plumbing
    rounds (index-loop rewrites of the iterator adapters on the verify path,
-   de-plumbing round 2 at `bea1051`; current snapshot head `797b4ef`) are
+   de-plumbing round 2 at `bea1051`; current snapshot head `3153988`) are
    part of the verified surface: the
    certificates cover the *patched* verify path, and the patch commits are
    the auditable delta from upstream `30bac08`. Each rewrite's equivalence
@@ -47,17 +47,34 @@ proceeds and is part of every claim.
    here says the two agree; the evidence is empirical and its size is stated so
    a reader can judge it (external review, rounds 4–6, correctly objected that
    "finite" without a number is not a disclosure):
-   - **131 assertion points** (was 9 until 2026-07-28: three rounds from one
-     fixed seed, corrupting one fixed byte of a 7856-byte signature);
-   - of those, **20 are NIST ACVP SHA2-128s known-answer tests run against the
-     proved path** — 10 from the `internal` group, whose message *is* M′ and so
-     is exactly what `slh_verify_128s` consumes, and 10 from the `external pure`
-     group where mono, the deployed verifier and NIST must all three agree.
-     NIST's negatives cover structurally distinct corruption sites (modified R,
-     SIGFORS, SIGHT, modified message) rather than one arbitrary byte;
-   - the remaining 108 are randomized: 12 rounds, varying message lengths
-     including empty, corruption spread across the whole signature, plus
-     wrong-public-key and wrong-context cases.
+   - **137 evaluated input/verdict cases on the proved path** (was 9 until
+     2026-07-28: three rounds from one fixed seed, corrupting one fixed byte of a
+     7856-byte signature). The breakdown, which a reviewer can recount from
+     `src/verify_mono.rs`:
+     | source | cases |
+     |---|---:|
+     | retained original differential test (3 rounds × valid/corrupt/wrong-message) | 9 |
+     | randomized differential bridge (12 rounds × valid + 6 corruptions + wrong-key + wrong-context) | 108 |
+     | NIST ACVP `internal` group — M′ fed straight into `slh_verify_128s` | 10 |
+     | NIST ACVP `external pure` group — mono vs deployed vs NIST | 10 |
+     | **total** | **137** |
+   - **20 of those are NIST known-answer tests against the proved path** (the
+     two NIST rows above). NIST's negatives sit at structurally distinct sites —
+     modified R, SIGFORS, SIGHT, modified message — rather than one arbitrary
+     byte. The external-pure ten carry real contexts, 9 of them non-empty and one
+     at the FIPS-205 maximum length of 255, which is the only empirical check of
+     the domain-separator byte and context-length prefix that item 10 declares
+     outside every proof.
+   - **127 of the 137 compare mono against the deployed verifier** (all but the
+     ten `internal` NIST cases, which compare mono against NIST directly).
+   - Separately and **not** counted in the 137: **3 deployed-only prehash cases**
+     (NIST `external preHash`), which exercise `hash_verify` rather than the
+     proved path. Only two SHA2-512 vectors and one SHAKE-256 vector are
+     executable — NIST's remaining prehash vectors use functions this crate does
+     not implement — so this is *not* NIST coverage of all four supported prehash
+     variants.
+   - Corruption in the randomized bridge covers **72 distinct positions in the
+     range 11..=7779**, not literally every byte of the signature.
    Still **not** covered by any of it: agreement on inputs nobody generated, and
    the prehash variant against the mono path (see item 10). A passing
    differential test is evidence, not a proof.
@@ -97,6 +114,14 @@ proceeds and is part of every claim.
     Note the residue honestly: an author who edits the logic *and* rotates its
     pin in the same commit is not stopped by anything mechanical — that case is
     caught only by reading the diff at the pin.
+    **`PROVENANCE.json` is itself load-bearing and unpinned.** It supplies the
+    values for every byte pin, and round-7 review demonstrated that deleting one
+    key from it silently removed both harness pins with no diagnostic, after
+    which the logic mutation above ran to ALL GREEN. The *policy* — which files
+    must be pinned — now lives hardcoded in `check.sh` and a missing entry is a
+    build failure, so the map can no longer be quietly shortened; but the map's
+    own bytes are still not pinned by anything, and could not be without moving
+    the root of trust somewhere else.
     Still trusted, and NOT bound by anything the button can check:
     `check.sh` itself, `~/aeneas-toolchain/env.sh`, the `$AENEAS_HOME` tree
     (i.e. *which* Aeneas/Lean library the proofs are checked against), `python3`,

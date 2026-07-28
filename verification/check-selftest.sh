@@ -25,6 +25,9 @@
 #  17  the audit's fail-closed guards switched off           (round-6 NEW-7:
 #      the digest binds the audit's DATA, never its LOGIC; two characters in
 #      Audit.lean defeated every gate with the digest BYTE-IDENTICAL)
+#  18  the pin map shortened by one JSON key                 (round-7 NEW-13:
+#      deleting harness_integrity_sha256 silently un-pinned BOTH lean-guard and
+#      Audit.lean with no diagnostic, re-opening 17 with the digest identical)
 #
 # Self-cleaning: every mutated file is backed up and restored, and an EXIT trap
 # restores even on failure. Run from a clean tree.
@@ -281,7 +284,12 @@ EOF
 rm -f Evil.lean                       # the SOURCE is gone; only the .olean remains
 printf '\nimport Evil\n' >> Proofs/ChainSpec.lean
 if [ ! -f Evil.olean ]; then
-  echo "  (note: could not build Evil.olean; attack 16 inconclusive)"; rm -f Evil.olean
+  # An attack that could not be staged must FAIL the suite, never pass quietly:
+  # round-7 review found this branch printed a note and fell through to the
+  # unconditional "16 attacks rejected" line, so the suite could claim a
+  # rejection that never happened.
+  rm -f Evil.olean
+  fail "ATTACK 16 could not be staged (Evil.olean did not build) — the suite must not report green on an attack it did not run"
 else
   ./check.sh > /tmp/sf16.out 2>&1 && fail "ATTACK 16 SUCCEEDED: an orphan .olean injected False and stayed GREEN!" /tmp/sf16.out
   # The defense is Phase 0's purge, which now covers ALL of verification/ and so
@@ -318,6 +326,27 @@ grep -q "INTEGRITY FAILED" /tmp/sf17.out || fail "ATTACK 17: rejected but not vi
 restore
 echo "✓ attack 17 rejected (Phase 0 pins Audit.lean — its LOGIC cannot be silently switched off)"
 
+# ── 18: SHORTEN THE PIN MAP (round-7 NEW-13) ───────────────────────────────
+# Previously ALL GREEN: PROVENANCE.json is a tracked file that nothing pins, and
+# the only completeness test was "is the map non-empty", so deleting the whole
+# harness_integrity_sha256 key silently un-pinned BOTH lean-guard and
+# Proofs/Audit.lean with no diagnostic — after which the attack-17 logic
+# mutation ran green over a repository proving False, digest byte-identical.
+# The required pin NAMES now live hardcoded in check.sh (the root of trust),
+# so a shortened map is a build failure.
+save PROVENANCE.json
+python3 - <<'PY'
+import json
+p = "PROVENANCE.json"; d = json.load(open(p))
+del d["harness_integrity_sha256"]
+json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
+PY
+./check.sh > /tmp/sf18.out 2>&1 && fail "ATTACK 18 SUCCEEDED: the harness pins were deleted and the button stayed GREEN!" /tmp/sf18.out
+grep -q "pin map INCOMPLETE" /tmp/sf18.out || fail "ATTACK 18: rejected but not via the pin-map completeness check" /tmp/sf18.out
+grep -q "Proofs/Audit.lean" /tmp/sf18.out || fail "ATTACK 18: rejected but did not name the missing pin" /tmp/sf18.out
+restore
+echo "✓ attack 18 rejected (the pin map cannot be silently shortened — required names are in check.sh)"
+
 # ── 15: COVERAGE OF THE DIGEST INPUT (direct, not an attack) ───────────────
 # Attack 9 proves the digest binding fires. This proves WHAT it covers: the
 # hashed block must literally contain each reference fold's definition BODY, so
@@ -348,8 +377,8 @@ echo "✓ check 15 passed (the hashed block carries all 12 reference-fold bodies
 echo '  including the recursive _f companions and their extracted-primitive calls)'
 
 echo
-echo "SELFTEST GREEN: 16 attacks rejected + digest-coverage check — dead files, extra axioms, dropped"
+echo "SELFTEST GREEN: 17 attacks rejected + digest-coverage check — dead files, extra axioms, dropped"
 echo "oracles, vanished certs, un-manifested False theorems AND defs, gutted"
 echo "statements, hand-edited models, dropped manifest rows, widened policy,"
 echo "specification folds redefined to the loop, a False-proof in the auditor,"
-echo "a stubbed harness, and stray modules."
+echo "a stubbed harness, stray modules, and a shortened pin map."

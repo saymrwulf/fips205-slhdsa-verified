@@ -33,7 +33,7 @@ CRATE="${1:-$HOME/GitClone/FormalVerification/sources/fips205-source}"
 
 # The pinned source commit this repo's model + proofs were verified against.
 # Keep in lockstep with verification/PROVENANCE.json and the README snapshot.
-EXPECTED_SRC_COMMIT="${EXPECTED_SRC_COMMIT:-3153988c4e89df66c41e698329f2ae5460880875}"
+EXPECTED_SRC_COMMIT="${EXPECTED_SRC_COMMIT:-c945821bf964a78bed3ba920ad5aa021083e6237}"
 
 # ── Provenance guard: refuse a wrong or dirty source tree (fail-closed) ──────
 [ -d "$CRATE/.git" ] || { echo "ERROR: '$CRATE' is not a git checkout of fips205-source." >&2; exit 2; }
