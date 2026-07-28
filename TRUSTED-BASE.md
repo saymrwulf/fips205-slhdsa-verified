@@ -69,7 +69,19 @@ proceeds and is part of every claim.
     (`PROVENANCE.json → harness_integrity_sha256`); it is kept rather than
     removed because it is the memory cap and machine-wide lock that protect the
     build machine (a Lean elaboration once reached 12.2 GB and took the host
-    down). Still trusted, and NOT bound by anything the button can check:
+    down).
+    **`verification/Proofs/Audit.lean` is pinned the same way, and for a sharper
+    reason** (round-6 NEW-7): the digest it emits binds the audit's *data* — the
+    policy constants, the statements, the specification bodies — but nothing can
+    make a program hash the correctness of its own logic. Flipping this file's
+    two fail-closed guards to `unless true` disabled every in-Lean check while
+    the digest stayed BYTE-IDENTICAL, and a repository proving `False` passed
+    ALL GREEN. The byte pin converts that from a silent green into a build
+    failure; a legitimate change to the audit is now a reviewable pin rotation.
+    Note the residue honestly: an author who edits the logic *and* rotates its
+    pin in the same commit is not stopped by anything mechanical — that case is
+    caught only by reading the diff at the pin.
+    Still trusted, and NOT bound by anything the button can check:
     `check.sh` itself, `~/aeneas-toolchain/env.sh`, the `$AENEAS_HOME` tree
     (i.e. *which* Aeneas/Lean library the proofs are checked against), `python3`,
     and the Lean toolchain. An audit executed by a harness cannot defend against

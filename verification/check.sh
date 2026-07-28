@@ -50,17 +50,25 @@ echo "==============================="
 
 # ── Phase 0: build hygiene + model & harness integrity ───────────────────────
 echo "=== Phase 0: build hygiene + model/harness integrity ==="
-# (a) Purge every .olean first. Round-5 NEW-4: the button's verdict must depend
-#     on COMMITTED BYTES, never on untracked build state — a stale .olean from a
-#     module that no longer exists (and *.olean is .gitignored, so invisible to
-#     `git status`) could otherwise satisfy an import and go green.
-find "$HERE/gen" "$HERE/Proofs" -name '*.olean' -delete 2>/dev/null || true
-# (b) No Lean source may sit outside gen/ and Proofs/. LEAN_PATH includes $PWD,
-#     so a stray verification/*.lean can join the environment ungated (NEW-4).
-STRAY=$(find "$HERE" -maxdepth 1 -name '*.lean' -printf '%f\n' 2>/dev/null || true)
+# (a) Purge EVERY .olean under verification/ — round-6 NEW-8: the round-5 purge
+#     covered only gen/ and Proofs/ while the stray check greped only *.lean, so
+#     an ORPHAN `verification/Evil.olean` WITH NO SOURCE AT ALL fell between them,
+#     satisfied an `import Evil`, and went ALL GREEN with the digest untouched
+#     (*.olean is .gitignored, so `git status` showed only the import line).
+#     The verdict must depend on COMMITTED BYTES, never on untracked build state.
+find "$HERE" -name '*.olean' -delete 2>/dev/null || true
+#     Aeneas also emits `*_Template.lean` scaffolding into gen/ on every
+#     extraction. Those files are UNTRACKED byproducts (a fresh clone has only
+#     the four pinned model files), nothing imports them, and they would
+#     otherwise sit on LEAN_PATH unpinned — the same untracked-state problem.
+#     Remove them here so the gen/ file-set assertion below can be exact.
+find "$HERE/gen" -name '*_Template.lean' -delete 2>/dev/null || true
+# (b) No Lean source OR compiled module may sit outside gen/ and Proofs/;
+#     LEAN_PATH includes $PWD, so either can join the environment ungated.
+STRAY=$(find "$HERE" -maxdepth 1 \( -name '*.lean' -o -name '*.olean' \) -printf '%f\n' 2>/dev/null || true)
 if [ -n "$STRAY" ]; then
-  echo "$STRAY" | sed 's/^/  ✗ stray Lean source outside gen\/ and Proofs\/: /'
-  echo "BUILD HYGIENE FAILED (a .lean outside the audited directories can join LEAN_PATH)"; exit 1
+  echo "$STRAY" | sed 's/^/  ✗ stray Lean file outside gen\/ and Proofs\/: /'
+  echo "BUILD HYGIENE FAILED (a .lean/.olean outside the audited directories can join LEAN_PATH)"; exit 1
 fi
 # (c) sha256-pin the extracted model AND the compiler harness. lean-guard is
 #     repo-tracked and is shelled out to for every compile, so it is part of the
@@ -84,6 +92,20 @@ for rel, want in sorted(files.items()):
         print(f"  ✗ {rel}: sha256 {got[:12]} ≠ pinned {want[:12]}"); bad = 1
     else:
         print(f"  ✓ {rel}")
+# Round-6 NEW-9: pin gen/ as a SET, not as four names. A new file under gen/ was
+# neither hashed nor forbidden, while LEAN_PATH contains $PWD/gen — so the
+# closure's premise ("everything outside certModules is pinned or disclosed")
+# was not enforced. Any .lean under gen/ must appear in the pin map.
+pinned_gen = {k for k in files if k.startswith("gen/")}
+actual_gen = set()
+for root, _, names in os.walk(os.path.join(here, "gen")):
+    for n in names:
+        if n.endswith(".lean"):
+            actual_gen.add(os.path.relpath(os.path.join(root, n), here))
+for extra in sorted(actual_gen - pinned_gen):
+    print(f"  ✗ UNPINNED model file under gen/: {extra}"); bad = 1
+for missing in sorted(pinned_gen - actual_gen):
+    print(f"  ✗ pinned model file absent: {missing}"); bad = 1
 sys.exit(1 if bad else 0)
 PY
 
@@ -143,9 +165,18 @@ if [ "$GOT_SHA" != "$EXPECTED_AUDIT_SHA256" ]; then
   echo "  expected: $EXPECTED_AUDIT_SHA256"
   echo "  observed: $GOT_SHA"
   echo "  A policy constant, a certificate statement, or a specification"
-  echo "  definition changed without a reviewed rotation. The observed block was"
-  echo "  written to verification/.audit-manifest.observed — diff it to see what."
+  echo "  definition changed without a reviewed rotation."
+  echo "  What moved (committed block vs observed):"
+  diff -u "$HERE/AUDIT-MANIFEST.txt" "$HERE/.audit-manifest.observed" 2>/dev/null \
+    | head -40 | sed 's/^/    /' || echo "    (AUDIT-MANIFEST.txt absent — cannot diff)"
   exit 1
+fi
+# The digest's INPUT is committed too (round-6: a mismatch previously wrote an
+# observed block with nothing to diff it against). Guard against the committed
+# copy drifting from what Lean actually emits.
+if ! printf '%s\n' "$BLOCK" | cmp -s - "$HERE/AUDIT-MANIFEST.txt"; then
+  echo "AUDIT FAILED — the committed AUDIT-MANIFEST.txt does not match the emitted block"
+  echo "  (digest matched, so this means the committed copy is stale — refresh it)"; exit 1
 fi
 echo "  ✓ $(grep -oF 'exact-cone audit PASSED' <<<"$AUD_OUT" | head -1)"
 echo "  ✓ audit-manifest digest matches (sha256 ${EXPECTED_AUDIT_SHA256:0:16}…)"
