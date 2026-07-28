@@ -39,7 +39,7 @@
   "byte_identical_regeneration_verified": "2026-07-28 (re-verified after the test/vector commit: all four pinned model files unchanged)",
   "model_integrity_sha256": {
     "_comment": "All four Lean model files check.sh Phase 0 pins before compiling anything \u2014 the two aeneas-generated files AND the two hand-maintained *External files (which carry the five oracle axioms and the Step defs). A hand-edit of the model fails the build here (round-4 reviewer F3).",
-    "gen/SlhVerify/TypesExternal.lean": "37958beb7c90b649497a20b0802f98f0fb2d975c245eca956d7396af74d7759f",
+    "gen/SlhVerify/TypesExternal.lean": "2988c04c5fc8c634aff4d9bd13604b8a47e677daa1f45e8f4f321368606cdd0a",
     "gen/SlhVerify/FunsExternal.lean": "5efe551c35969c9da28b2f3eaed4a6a67c410c62a1926aab390e3abf010390f8",
     "gen/SlhVerify/Types.lean": "db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384",
     "gen/SlhVerify/Funs.lean": "7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f"
