@@ -5,7 +5,7 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: eleven certificates over the extracted verify model (external review rounds 1–5 applied)
+## STATUS: eleven certificates over the extracted verify model (external review rounds 1–6 applied)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the proofs
 compile, and the audit passes. The audit runs **inside Lean**
@@ -64,8 +64,15 @@ cannot translate the deployed `Hashers` function-pointer struct):
   certificate — and it determines the FORS indices / WOTS digits, so a defect
   there could change the recomputed root while all eleven theorems still hold.
 - **Not the deployed public verifier:** the proved subject is the private
-  `verify_mono` facade; the bridge to upstream's generic `pk.verify()` is the
-  finite in-snapshot **differential test**, not a machine-checked refinement.
+  `verify_mono` facade; the bridge to upstream's generic `pk.verify()` is a
+  finite **differential test**, not a machine-checked refinement. Its size is
+  now stated rather than left to the word "finite": **131 assertion points**,
+  of which **20 are NIST ACVP SHA2-128s known-answer tests run against the
+  proved path** (see TRUSTED-BASE.md item 9). Until 2026-07-28 it was nine
+  points from a single seed, and this parameter set had *no* NIST verification
+  coverage at all — the vectors vendored upstream contain no SHA2-128s sigVer
+  group, so the 128s groups were extracted from the official NIST ACVP-Server
+  set (provenance recorded in the vector file).
 - **Not closed-form FIPS 205 correctness:** the folds are transliterations of
   the extracted loops (the hash primitives stay opaque); nothing here relates
   the recomputed root to a mathematical SLH-DSA specification.
@@ -156,8 +163,10 @@ casts, the WOTS+ checksum `iter().take()` + `&u32` Sub → an index loop —
 each site a local rewrite whose equivalence is argued in the commit and
 checked, for SHA2-128s, by the differential test; the obsoleted transpiler
 axioms were deleted from the external files); fidelity pinned by that
-differential test in the snapshot (valid / corrupted / wrong-message),
-re-run green after every source patch.
+differential test in the snapshot — since 2026-07-28 a randomized bridge
+(12 rounds, corruption across the whole signature, wrong-key and wrong-context
+cases) plus NIST ACVP 128s known-answer tests — re-run green after every
+source patch.
 
 - **`fips205.fors_inner_loop_eq`** + **`fips205.fors_outer_loop_eq`**
   (Algorithm 17, FORS pk-from-sig): a nested loop, split into two theorems.

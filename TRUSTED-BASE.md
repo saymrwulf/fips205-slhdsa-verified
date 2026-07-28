@@ -42,9 +42,25 @@ proceeds and is part of every claim.
    has no certificate; a defect there could change the recomputed root while
    all eleven theorems still hold.
 9. **The deployed generic verifier.** The proved subject is the private
-   `verify_mono` facade. The bridge to upstream's generic `pk.verify()` is
-   the finite in-snapshot differential test, not a machine-checked
-   refinement.
+   `verify_mono` facade. The bridge to upstream's generic `pk.verify()` is a
+   finite differential test, **not** a machine-checked refinement — no theorem
+   here says the two agree; the evidence is empirical and its size is stated so
+   a reader can judge it (external review, rounds 4–6, correctly objected that
+   "finite" without a number is not a disclosure):
+   - **131 assertion points** (was 9 until 2026-07-28: three rounds from one
+     fixed seed, corrupting one fixed byte of a 7856-byte signature);
+   - of those, **20 are NIST ACVP SHA2-128s known-answer tests run against the
+     proved path** — 10 from the `internal` group, whose message *is* M′ and so
+     is exactly what `slh_verify_128s` consumes, and 10 from the `external pure`
+     group where mono, the deployed verifier and NIST must all three agree.
+     NIST's negatives cover structurally distinct corruption sites (modified R,
+     SIGFORS, SIGHT, modified message) rather than one arbitrary byte;
+   - the remaining 108 are randomized: 12 rounds, varying message lengths
+     including empty, corruption spread across the whole signature, plus
+     wrong-public-key and wrong-context cases.
+   Still **not** covered by any of it: agreement on inputs nobody generated, and
+   the prehash variant against the mono path (see item 10). A passing
+   differential test is evidence, not a proof.
 10. **Everything above the extraction root.** The root is
     `verify_mono::slh_verify_128s = slh_verify_internal_free(M′, sig, pk)`,
     which takes the message-digest input **M′ as an argument**. The code in

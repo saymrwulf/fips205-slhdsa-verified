@@ -3,9 +3,9 @@
   "parameter_set": "SLH-DSA-SHA2-128s",
   "source": {
     "repo": "github.com/saymrwulf/fips205-source",
-    "head": "797b4ef26338e27363683656f93cb065a77daa0e",
+    "head": "3153988c4e89df66c41e698329f2ae5460880875",
     "upstream_base": "integritychain/fips205 @ 30bac08580aa61f653e5436d1bbacb5ffac446c4",
-    "upstream_deviation": "verbatim import minus CI workflows; then the additive monomorphic verify_mono compat module + de-plumbing rounds 1-2, each an individually-justified commit",
+    "upstream_deviation": "verbatim import minus CI workflows; then the additive monomorphic verify_mono compat module + de-plumbing rounds 1-2, each an individually-justified commit; then NIST ACVP SHA2-128s sigVer vectors + an expanded differential bridge (TEST-ONLY: no verify-path function changed, and re-running extract.sh against this commit reproduces all four model files byte-identically)",
     "cargo_lock": "committed",
     "rust_toolchain_toml": "nightly-2026-06-01"
   },
@@ -36,7 +36,7 @@
     "gen/SlhVerify/TypesExternal.lean",
     "gen/SlhVerify/FunsExternal.lean"
   ],
-  "byte_identical_regeneration_verified": "2026-07-24",
+  "byte_identical_regeneration_verified": "2026-07-28 (re-verified after the test/vector commit: all four pinned model files unchanged)",
   "model_integrity_sha256": {
     "_comment": "All four Lean model files check.sh Phase 0 pins before compiling anything \u2014 the two aeneas-generated files AND the two hand-maintained *External files (which carry the five oracle axioms and the Step defs). A hand-edit of the model fails the build here (round-4 reviewer F3).",
     "gen/SlhVerify/TypesExternal.lean": "37958beb7c90b649497a20b0802f98f0fb2d975c245eca956d7396af74d7759f",
