@@ -36,9 +36,18 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE"
 source ~/aeneas-toolchain/env.sh
 
+# Backups live OUTSIDE verification/. Round-8 added a self-deriving harness rule:
+# every executable file in this directory must be pinned. `cp -p` preserves the
+# executable bit, so an in-tree `check.sh.sfbak` would look like an unpinned
+# harness file and fail the run for a reason unrelated to the attack — the
+# defect class this suite exists to catch.
+SFBAK="$(mktemp -d)"
 BAKS=()
-save()    { cp -p "$1" "$1.sfbak"; BAKS+=("$1"); }
-restore() { for f in "${BAKS[@]:-}"; do [ -f "$f.sfbak" ] && mv -f "$f.sfbak" "$f"; done; BAKS=(); }
+save()    { cp -p "$1" "$SFBAK/$(printf %s "$1" | tr / _)"; BAKS+=("$1"); }
+restore() { for f in "${BAKS[@]:-}"; do
+              b="$SFBAK/$(printf %s "$f" | tr / _)"
+              [ -f "$b" ] && cp -p "$b" "$f" && rm -f "$b"
+            done; BAKS=(); }
 # Proofs/Audit.lean is sha256-pinned by Phase 0 since round 6 (NEW-7). An attack
 # that mutates the audit's DATA must therefore ALSO rotate that pin, otherwise it
 # is stopped by the byte pin and never reaches the mechanism it means to test —
@@ -56,6 +65,7 @@ PY
 }
 cleanup() {
   restore
+  rm -rf "$SFBAK" 2>/dev/null
   rm -f Proofs/Stray.lean Proofs/EvilSpec.lean Evil.lean Evil.olean \
         Proofs/*.olean gen/SlhVerify/*.olean *.olean .audit-manifest.observed 2>/dev/null
   return 0
@@ -342,8 +352,12 @@ del d["harness_integrity_sha256"]
 json.dump(d, open(p, "w"), indent=2); open(p, "a").write("\n")
 PY
 ./check.sh > /tmp/sf18.out 2>&1 && fail "ATTACK 18 SUCCEEDED: the harness pins were deleted and the button stayed GREEN!" /tmp/sf18.out
-grep -q "pin map INCOMPLETE" /tmp/sf18.out || fail "ATTACK 18: rejected but not via the pin-map completeness check" /tmp/sf18.out
-grep -q "Proofs/Audit.lean" /tmp/sf18.out || fail "ATTACK 18: rejected but did not name the missing pin" /tmp/sf18.out
+# The diagnostic is "UNPINNED harness file" since round 8, when the required set
+# became self-deriving from the executable bit: deleting the map now reports ALL
+# five harness entries as unpinned, not just the two that used to be hardcoded.
+grep -q "UNPINNED harness file" /tmp/sf18.out || fail "ATTACK 18: rejected but not via the pin-map completeness check" /tmp/sf18.out
+grep -q "Proofs/Audit.lean" /tmp/sf18.out || fail "ATTACK 18: rejected but did not name the audit driver" /tmp/sf18.out
+grep -q "lean-guard" /tmp/sf18.out || fail "ATTACK 18: rejected but did not name lean-guard" /tmp/sf18.out
 restore
 echo "✓ attack 18 rejected (the pin map cannot be silently shortened — required names are in check.sh)"
 

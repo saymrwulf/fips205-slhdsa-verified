@@ -450,3 +450,82 @@ statements, hand-edited models, dropped manifest rows, widened policy,
 specification folds redefined to the loop, a False-proof in the auditor,
 a stubbed harness, stray modules, and a shortened pin map.
 ```
+
+## Round-8 — author-agent run, 20260728T124039Z, proof repo @ (this commit)
+
+Captured with `tee`. The third reviewer independently ran check.sh and
+check-selftest.sh to green at 1bc4f39 on its own hardware and toolchain, and
+recomputed the audit digest outside check.sh — see ATTESTATION-BASIS.md.
+PIN ROTATIONS: harness_integrity_sha256 GAINS check-selftest.sh, drill.sh and
+extract.sh (the harness set is now self-derived from the executable bit);
+check-selftest.sh re-pinned twice during this round as it was edited. No model
+pin rotated; the audit digest is unchanged at d83e297a….
+
+### check.sh
+```
+fips205-slhdsa-verified — check
+===============================
+=== Phase 0: build hygiene + model/harness integrity ===
+  ✓ Proofs/Audit.lean
+  ✓ check-selftest.sh
+  ✓ drill.sh
+  ✓ extract.sh
+  ✓ gen/SlhVerify/Funs.lean
+  ✓ gen/SlhVerify/FunsExternal.lean
+  ✓ gen/SlhVerify/Types.lean
+  ✓ gen/SlhVerify/TypesExternal.lean
+  ✓ lean-guard
+=== Phase 1: compile the extracted model ===
+  · gen/SlhVerify/TypesExternal
+  · gen/SlhVerify/Types
+  · gen/SlhVerify/FunsExternal
+  · gen/SlhVerify/Funs
+=== Phase 2: compile the proofs ===
+  · ChainSpec
+  · WotsSpec
+  · XmssSpec
+  · HtSpec
+  · ForsInnerSpec
+  · ForsOuterSpec
+  · InputPrepSpec
+  · ApexSpec
+=== Phase 3: in-Lean audit (cones + statement fingerprints + enumeration) ===
+  ✓ exact-cone audit PASSED
+  ✓ audit-manifest digest matches (sha256 d83e297a49094c97…)
+
+ALL GREEN — model compiles, proofs compile, and every certificate cone
+equals EXACTLY the three kernel axioms plus its documented SHA-2 oracles.
+Certificates proven: fips205.chain_free_loop_eq fips205.wots_loop1_eq fips205.xmss_loop_eq fips205.ht_loop_eq fips205.fors_inner_loop_eq fips205.fors_outer_loop_eq fips205.to_int_loop_eq fips205.to_byte_loop_eq fips205.wots_csum_loop_eq fips205.base2b_outer_loop_eq fips205.slh_verify_128s_accepts_iff
+```
+
+### check-selftest.sh (17 attacks + digest-coverage check)
+```
+check-selftest: attacking the gates
+====================================
+✓ attack 1 rejected (dead-file gate)
+✓ attack 2 rejected (extra-axiom detection — evil_ax named)
+✓ attack 3 rejected (missing-oracle detection — exact cone, not subset)
+✓ attack 4 rejected (existence check — a vanished cert cannot pass as 0-axiom)
+✓ attack 5 rejected (enumeration — an un-manifested False theorem cannot pass)
+✓ attack 6 rejected (statement check — a gutted statement of the same cone cannot pass)
+✓ attack 7 rejected (Phase 0 model-byte integrity)
+✓ attack 8 rejected (audit-manifest digest — a silently-dropped cert cannot pass)
+✓ attack 9 rejected (digest covers allowedBoundary — the policy cannot be widened silently)
+✓ attack 10 rejected (a specification fold cannot be silently redefined to the loop)
+✓ attack 11 rejected (enumeration covers every declaration kind, not just theorems)
+✓ attack 12 rejected (the auditor audits itself — no exemption)
+✓ attack 13 rejected (Phase 0 pins lean-guard — the harness is in the TCB and bound)
+✓ attack 14 rejected (no .lean may sit outside gen/ and Proofs/)
+✓ attack 16 rejected (Phase 0 purges every .olean under verification/, so an
+  orphan compiled module with no source cannot satisfy an import)
+✓ attack 17 rejected (Phase 0 pins Audit.lean — its LOGIC cannot be silently switched off)
+✓ attack 18 rejected (the pin map cannot be silently shortened — required names are in check.sh)
+✓ check 15 passed (the hashed block carries all 12 reference-fold bodies,
+  including the recursive _f companions and their extracted-primitive calls)
+
+SELFTEST GREEN: 17 attacks rejected + digest-coverage check — dead files, extra axioms, dropped
+oracles, vanished certs, un-manifested False theorems AND defs, gutted
+statements, hand-edited models, dropped manifest rows, widened policy,
+specification folds redefined to the loop, a False-proof in the auditor,
+a stubbed harness, stray modules, and a shortened pin map.
+```

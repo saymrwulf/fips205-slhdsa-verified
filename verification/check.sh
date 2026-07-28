@@ -75,7 +75,7 @@ fi
 #     trusted computing base: round 5 demonstrated that stubbing it alone yields
 #     ALL GREEN in 3.6s over destroyed proofs. It is KEPT (it is the memory cap
 #     that protects this machine after the 12.2GB OOM incident) and pinned.
-python3 - "$HERE/PROVENANCE.json" "$HERE" <<'PY' || { echo "INTEGRITY FAILED (a pinned file differs from PROVENANCE.json — hand-edited model or harness?)"; exit 1; }
+python3 - "$HERE/PROVENANCE.json" "$HERE" <<'PY' || { echo "INTEGRITY FAILED (a pinned file differs from PROVENANCE.json, or a required file is unpinned — see the specific line above)"; exit 1; }
 import json, sys, hashlib, os
 prov = json.load(open(sys.argv[1])); here = sys.argv[2]
 files = {k: v for k, v in prov.get("model_integrity_sha256", {}).items() if not k.startswith("_")}
@@ -92,15 +92,27 @@ bad = 0
 # proving False, digest byte-identical. The model side self-protected only
 # because the gen/ set assertion below derives its requirement from the
 # filesystem; the harness side had no such cross-check.
-REQUIRED = {
-    "lean-guard", "Proofs/Audit.lean",
-    "gen/SlhVerify/Types.lean", "gen/SlhVerify/Funs.lean",
-    "gen/SlhVerify/TypesExternal.lean", "gen/SlhVerify/FunsExternal.lean",
+# SELF-DERIVING, so a NEW harness file cannot be forgotten. Round-8 review
+# observed that a hardcoded list is itself a second thing to keep in sync, and
+# supplied the natural boundary the harness does have: THE EXECUTABLE BIT. Every
+# executable file in verification/ is something this script can shell out to, so
+# every one must be pinned; a new script therefore fails closed until it is.
+# check.sh is excluded because it cannot pin itself — it is the root of trust,
+# and TRUSTED-BASE.md item 11 says so. Proofs/Audit.lean is added explicitly: it
+# is not executable but it computes the digest it is judged by.
+# Backup files are excluded by extension only because check-selftest.sh keeps its
+# backups OUTSIDE this directory now; nothing here is expected to match.
+harness = {
+    f for f in os.listdir(here)
+    if os.path.isfile(os.path.join(here, f))
+    and os.access(os.path.join(here, f), os.X_OK)
+    and f != "check.sh"
 }
-missing = REQUIRED - set(files)
+harness.add("Proofs/Audit.lean")
+missing = harness - set(files)
 if missing:
     for m in sorted(missing):
-        print(f"  ✗ pin map INCOMPLETE — no entry for {m}")
+        print(f"  ✗ UNPINNED harness file (executable, or the audit driver): {m}")
     bad = 1
 for rel, want in sorted(files.items()):
     p = os.path.join(here, rel)
