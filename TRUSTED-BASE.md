@@ -20,6 +20,27 @@ proceeds and is part of every claim.
    toolchain) are trusted to preserve semantics from Rust (MIR) to the
    Lean model. Divergence between rustc's semantics and the extracted
    model is trusted base.
+
+   **What is now reproducible, and what is not.** Extraction is two steps:
+   `Rust --charon--> SlhVerify.llbc --aeneas--> gen/SlhVerify/*.lean`. The
+   `.llbc` is committed, so the SECOND step can be re-run by anyone with the
+   pinned Aeneas and this repository, and on 2026-08-03 doing so reproduced
+   `Types.lean` and `Funs.lean` **byte-identically**. The FIRST step still
+   requires charon, which no reviewer has yet had available. So: the
+   LLBC → Lean half is reproducible on demand; the Rust → LLBC half rests on
+   the author's attestation alone, and continues to do so until a third party
+   runs it. Do not read the first half as evidence for the second.
+
+3b. **The correspondence check is textual, not a Lean query.** Phase 0d parses
+   `FunsExternal_Template.lean` and the hand-written model as SOURCE TEXT. It
+   establishes that every external the extraction names is answered by a
+   declaration of the right name in the pinned model, and that the model
+   declares no axiom the extraction never asked for. It does **not** ask Lean
+   how those names resolve at elaboration — the four ed25519 repositories have
+   a second, semantic phase for that; this one does not. All eleven externals
+   here are answered by the model itself (none by the proven corpus), which is
+   the narrow case where the textual answer and the semantic one coincide, but
+   that is a property of today's corpus and not a guarantee of the check.
 4. **The Lean kernel and its three axioms**
    (`propext, Classical.choice, Quot.sound`).
 5. **Build correspondence.** No reproducible-builds claim: the proof is

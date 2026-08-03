@@ -8,9 +8,10 @@ four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 ## STATUS: eleven certificates over the extracted verify model (external review rounds 1–6 applied)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the proofs
-compile, and the audit passes. The audit runs **inside Lean**
-(`verification/Proofs/Audit.lean`) and binds four things, each added because an
-external reviewer *demonstrated* the button going green without it:
+compile, and the audit passes. It binds **six** things, each added because an
+external reviewer *demonstrated* the button going green without it. Four are
+checked **inside Lean** by `verification/Proofs/Audit.lean`; the last two are
+separate phases that deliberately do **not** rely on that file:
 
 - **axiom cones** — each certificate's cone is read from the kernel via
   `collectAxioms` and must equal its expected set EXACTLY, so an added axiom
@@ -26,9 +27,26 @@ external reviewer *demonstrated* the button going green without it:
   *body*. Round 5 showed why the last part is essential: redefining a fold to
   *be* the extracted loop left every earlier fingerprint bit-identical while the
   certificate degenerated to "the loop equals the loop";
-- **bytes** — Phase 0 sha256-pins the four model files and the compiler harness
+- **bytes** — Phase 0 sha256-pins the five model files and the compiler harness
   `lean-guard`, purges stale `.olean`s, and forbids stray `.lean` files, so the
-  verdict depends on committed bytes rather than build-directory state.
+  verdict depends on committed bytes rather than build-directory state;
+- **correspondence** (Phase 0d) — byte pins say the model did not *change*; they
+  say nothing about whether it *answers the extraction*. Aeneas states what the
+  extracted Rust needs from outside in `FunsExternal_Template.lean`, and every
+  such name must be answered by the hand-written model or by a real definition
+  in the corpus. An **extra axiom** in the model — an assumption no template
+  asks for — fails the button rather than passing as a silent row. This
+  repository previously deleted the template on every run, which is exactly why
+  it shipped a Template/model pair with no correspondence check at all
+  (round-8 estate review, GPT-5.6);
+- **the object files** (Phase 3b) — a second, independently implemented axiom
+  gate that reads the compiled `.olean`s via `readModuleData` instead of the
+  elaboration-time environment. Phase 3's view has a demonstrated blind spot: a
+  declaration made *after* the command that performs the walk sits in the object
+  file but not in the environment while the walk runs, so the walker reports "no
+  axiom" and is telling the truth about what it could see. Verified here by
+  planting `axiom cheat : ∀ (P : Prop), P` after the audit command — Phase 3
+  passed it, Phase 3b rejected it.
 
 What the button still does **not** bind is stated plainly in
 [TRUSTED-BASE.md](TRUSTED-BASE.md) item 11 — `check.sh` itself, the toolchain

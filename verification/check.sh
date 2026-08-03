@@ -7,6 +7,11 @@
 #             depend on committed bytes, not untracked build state), forbid any
 #             .lean outside gen/ and Proofs/, and sha256-pin the four model files
 #             AND the compiler harness `lean-guard` to PROVENANCE.json.
+#   Phase 0d— template/model correspondence: every external Aeneas states the
+#             extracted Rust needs (FunsExternal_Template.lean, committed and
+#             pinned) must be answered by the hand-written model or by a real
+#             definition in the corpus. An EXTRA AXIOM in the model — an
+#             assumption no template asks for — is a failure, not a silent row.
 #   Phase 1 — compile the extracted Lean model (gen/SlhVerify).
 #   Phase 2 — compile the proof files (Proofs/).
 #   Phase 3 — the in-Lean audit (Proofs/Audit.lean): per certificate, the cone
@@ -17,6 +22,14 @@
 #             POLICY constants, every certificate STATEMENT, and every reachable
 #             SPECIFICATION DEFINITION BODY. Any mismatch → non-zero exit →
 #             fail-closed. No text parsing of axiom cones.
+#   Phase 3b— kernel-side axiom-declaration gate: reads the compiled OBJECT
+#             FILES (`readModuleData`) rather than the elaboration-time
+#             environment, and rejects any axiom declared under Proofs/. This is
+#             a SECOND, independently implemented gate on the same property,
+#             because Phase 3's view has a demonstrated blind spot: a
+#             declaration made after the command that performs the walk is in
+#             the object file but not in the environment while the walk runs.
+#             It runs after Phase 3 because Proofs/Audit.lean is compiled there.
 #
 #   What this button does NOT bind is stated in TRUSTED-BASE.md item 11: this
 #   script itself, the toolchain env, $AENEAS_HOME, and the Lean toolchain.
