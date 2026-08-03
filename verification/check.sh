@@ -57,12 +57,25 @@ echo "=== Phase 0: build hygiene + model/harness integrity ==="
 #     (*.olean is .gitignored, so `git status` showed only the import line).
 #     The verdict must depend on COMMITTED BYTES, never on untracked build state.
 find "$HERE" -name '*.olean' -delete 2>/dev/null || true
-#     Aeneas also emits `*_Template.lean` scaffolding into gen/ on every
-#     extraction. Those files are UNTRACKED byproducts (a fresh clone has only
-#     the four pinned model files), nothing imports them, and they would
-#     otherwise sit on LEAN_PATH unpinned — the same untracked-state problem.
-#     Remove them here so the gen/ file-set assertion below can be exact.
-find "$HERE/gen" -name '*_Template.lean' -delete 2>/dev/null || true
+#     Aeneas also emits `*_Template.lean` into gen/ on every extraction. This
+#     script used to DELETE it, reasoning that an untracked file sitting on
+#     LEAN_PATH is exactly the unpinned-state problem described above. The
+#     reasoning was right; the remedy was the weaker of the two available. The
+#     ed25519 forks face the identical choice and COMMIT AND PIN their
+#     templates, which removes the untracked state just as completely and keeps
+#     the evidence.
+#
+#     The evidence matters. The template is Aeneas's own statement of what the
+#     extracted Rust needs from outside, and it is the ONLY artifact against
+#     which "does the hand-written model ANSWER the extraction?" can be asked.
+#     Deleting it made that question unaskable, which is why this repository
+#     shipped a Template/model pair with no correspondence check at all —
+#     round-8 estate review (GPT-5.6). It is now committed, pinned in
+#     model_integrity_sha256 like every other model file, and consumed by
+#     Phase 0d below.
+#
+#     It still never joins the environment: Phase 1 compiles the named model
+#     modules, not a glob, and nothing imports the template.
 # (b) No Lean source OR compiled module may sit outside gen/ and Proofs/;
 #     LEAN_PATH includes $PWD, so either can join the environment ungated.
 STRAY=$(find "$HERE" -maxdepth 1 \( -name '*.lean' -o -name '*.olean' \) -printf '%f\n' 2>/dev/null || true)
@@ -141,6 +154,38 @@ sys.exit(1 if bad else 0)
 PY
 
 # ── Phase 1: model ──────────────────────────────────────────────────────────
+# ── Phase 0d: template/model correspondence ─────────────────────────────────
+# WHAT THE BYTE PINS DO NOT ESTABLISH. Phase 0 pins the model files byte for
+# byte, so they cannot drift unnoticed. It says nothing about whether the model
+# ANSWERS the extraction: Aeneas states, in FunsExternal_Template.lean, exactly
+# what the extracted Rust needs from outside, and each such name must be
+# provided by the hand-written sibling FunsExternal.lean or by a real definition
+# in the proven corpus. A name the extraction asks for and nothing supplies is
+# drift the byte pins cannot see, because both files are individually pinned and
+# individually unchanged.
+#
+# This repository had a Template/model pair and NO correspondence check at all
+# — round-8 estate review (GPT-5.6). The scanner is the one the ed25519 forks
+# use, including its two round-8 corrections: a named Lean `section` does NOT
+# qualify declaration names (treating it as a namespace made the scanner invent
+# `Foo.bar`, and a semantic phase then certified an unrelated `Foo.bar` while
+# the real external went unqueried), and an EXTRA AXIOM in the model — an
+# assumption no template asks for — is a failure rather than a silent row.
+echo "=== Phase 0d: template/model correspondence ==="
+CORR=$(python3 "$HERE/model-correspondence.py" "$HERE") || {
+  echo "MODEL CORRESPONDENCE FAILED — the extraction asks for something this"
+  echo "repository does not supply, or the model declares an axiom nothing asks for."
+  printf '%s\n' "$CORR" | grep -E 'UNRESOLVED|EXTRA-AXIOM' | sed 's/^/    /'
+  exit 1
+}
+if ! printf '%s\n' "$CORR" | cmp -s - "$HERE/MODEL-CORRESPONDENCE.txt"; then
+  echo "MODEL CORRESPONDENCE FAILED — the committed table is not what the"
+  echo "scanner now produces. Differences:"
+  diff <(printf '%s\n' "$CORR") "$HERE/MODEL-CORRESPONDENCE.txt" | head -20 | sed 's/^/    /'
+  exit 1
+fi
+echo "  $(grep -c '|MODEL$\||PROVEN$' "$HERE/MODEL-CORRESPONDENCE.txt") externals, every one answered by the pinned model"
+
 echo "=== Phase 1: compile the extracted model ==="
 cd "$AENEAS_LEAN"
 lake env bash -c "

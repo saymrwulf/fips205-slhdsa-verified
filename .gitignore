@@ -1,5 +1,7 @@
 *.olean
 target/
 .lake/
-*_Template.lean
+# *_Template.lean is NO LONGER ignored: it is Aeneas's own statement of what
+# the extraction needs from outside, and it is the only artifact against which
+# "does the model ANSWER the extraction" can be asked. Committed and pinned.
 SlhVerify.llbc

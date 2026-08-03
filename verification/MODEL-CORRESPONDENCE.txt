@@ -1,0 +1,12 @@
+SlhVerify/FunsExternal|Array.Insts.ZeroizeZeroize.zeroize|MODEL
+SlhVerify/FunsExternal|U32.Insts.CoreIterRangeStep.backward_checked|MODEL
+SlhVerify/FunsExternal|U32.Insts.CoreIterRangeStep.forward_checked|MODEL
+SlhVerify/FunsExternal|U32.Insts.CoreIterRangeStep.steps_between|MODEL
+SlhVerify/FunsExternal|verify_mono.oracle.f|MODEL
+SlhVerify/FunsExternal|verify_mono.oracle.h|MODEL
+SlhVerify/FunsExternal|verify_mono.oracle.h_msg|MODEL
+SlhVerify/FunsExternal|verify_mono.oracle.t_l|MODEL
+SlhVerify/FunsExternal|verify_mono.oracle.t_len|MODEL
+SlhVerify/FunsExternal|zeroize.Zeroize.Blanket.zeroize|MODEL
+SlhVerify/FunsExternal|zeroize.__internal.AssertZeroize.Blanket.zeroize_or_on_drop|MODEL
+CORRESPONDENCE-COUNT|11

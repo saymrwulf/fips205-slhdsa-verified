@@ -42,7 +42,8 @@
     "gen/SlhVerify/TypesExternal.lean": "2988c04c5fc8c634aff4d9bd13604b8a47e677daa1f45e8f4f321368606cdd0a",
     "gen/SlhVerify/FunsExternal.lean": "5efe551c35969c9da28b2f3eaed4a6a67c410c62a1926aab390e3abf010390f8",
     "gen/SlhVerify/Types.lean": "db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384",
-    "gen/SlhVerify/Funs.lean": "7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f"
+    "gen/SlhVerify/Funs.lean": "7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f",
+    "gen/SlhVerify/FunsExternal_Template.lean": "b4f9c6ecdbd55599bc4d35720fff1accc71475b5702410b5a0666456439a4042"
   },
   "harness_integrity_sha256": {
     "_comment": "The harness is part of the trusted computing base and its membership is now SELF-DERIVING: check.sh requires every executable file in verification/ to appear here (round-8 review \u2014 a hardcoded list was itself a second thing to keep in sync), plus Proofs/Audit.lean, which is not executable but computes the digest it is judged by. check.sh itself is excluded: it cannot pin itself, and is disclosed as trusted-unbound in TRUSTED-BASE.md item 11. Pinning check-selftest.sh matters beyond the button: it is the only artifact demonstrating the gates work, and its assertions have been defective in four consecutive rounds, so weakening it is now a reviewable pin rotation rather than an unnoticed edit.",
@@ -50,7 +51,9 @@
     "Proofs/Audit.lean": "6108b97d75a8a8e8e0b9bef642ba887ea1ae8b17ba5b7c11d66400bfd2847d9e",
     "check-selftest.sh": "c6811482e25ae6e1fffa6ca50e60541e8e609a70c951db6bec4d2d39a4849e9a",
     "drill.sh": "915cf9310fa168c14ca5d76a1b84fd3b19acdfef9dfd0b03b01b19883548719e",
-    "extract.sh": "01cff43c350ed8eaac0e65ccd7599b68fef47c9434cdb5ad01c92d2127a3bbe9"
+    "extract.sh": "01cff43c350ed8eaac0e65ccd7599b68fef47c9434cdb5ad01c92d2127a3bbe9",
+    "model-correspondence.py": "1942177f13d6ae229d87a3b0b33f7fbb4b2ae20fe1059cc83010e73f6a156427",
+    "MODEL-CORRESPONDENCE.txt": "77bd374a60152689edcb3350c2a2547c6aaad192629e39e86d8548d2bad3f748"
   },
   "audit_gate": "verification/Proofs/Audit.lean \u2014 in-Lean audit (round 5). Per certificate: exact cone equality (collectAxioms) + elaborated-statement check. Enumeration: EVERY declaration kind (def/theorem/opaque/axiom \u2014 round 4 matched theorems only, so a `def : False` passed) in the eight certificate modules AND in Audit.lean itself (the auditor is not exempt). Binding digest: check.sh binds to the SHA-256 of a canonical AUDIT-MANIFEST block covering the POLICY constants (allowedBoundary + certModules \u2014 round-5 NEW-1: widening allowedBoundary previously re-opened the False-proof with the fingerprint byte-identical), every certificate's fully-elaborated statement, and every reachable specification definition's fully-elaborated BODY (round-5 NEW-2: redefining a reference fold to *be* the extracted loop previously left cone and fingerprint intact while the certificate degenerated to `loop = loop`). The 32-bit Expr.hash is retained only as a per-certificate diagnostic, not as the binding. Fail-closed; adversarially exercised by check-selftest.sh. check.sh Phase 0 additionally purges stale .olean files, forbids stray .lean outside gen/ and Proofs/, and pins model + harness bytes."
 }
