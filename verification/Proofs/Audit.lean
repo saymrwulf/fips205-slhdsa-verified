@@ -93,6 +93,21 @@ def manifest : List (Name × List Name × UInt64) :=
     (`fips205.base2b_outer_loop_eq,        kernel3,                                           324621577),
     (`fips205.slh_verify_128s_accepts_iff, kernel3 ++ [oracleF, oracleH, oracleTL, oracleTLen, oracleHMsg], 2489587792) ]
 
+/-- Declaration kind, in the vocabulary the estate's allowlists already use.
+    A KIND is part of the record because "the name is still there" and "the
+    thing behind the name is still the same kind of thing" are different
+    facts: a theorem quietly replaced by a `def` keeps its name and loses its
+    meaning. -/
+def kindOf : ConstantInfo → String
+  | .axiomInfo _  => "axiom"
+  | .thmInfo _    => "theorem"
+  | .opaqueInfo _ => "opaque"
+  | .defnInfo _   => "def"
+  | .quotInfo _   => "quot"
+  | .inductInfo _ => "inductive"
+  | .ctorInfo _   => "ctor"
+  | .recInfo _    => "rec"
+
 /-- Deterministic name ordering for the canonical serialization. -/
 def sortNames (l : List Name) : List Name :=
   ((l.map toString).toArray.qsort (· < ·)).toList.map (·.toName)
@@ -172,18 +187,39 @@ elab "auditCones" : command => do
   let manifestNames := manifest.map (·.1)
   let mut nEnum := 0
   let mut certsSeen : Array Name := #[]
+  let mut invRows : Array String := #[]
+  let mut drvRows : Array String := #[]
   for (nm, ci) in env.constants.toList do
     let scope : Option String :=
       match env.getModuleIdxFor? nm with
       | some idx =>
           let m := env.header.moduleNames[idx.toNat]!
           if certModules.contains m then some (toString m) else none
-      | none => if nm.isInternal then none else some "Proofs.Audit (this file)"
+      -- INTERNAL NAMES ARE NO LONGER EXEMPT. They were skipped here, which
+      -- was harmless while nothing compared this walk against the kernel's
+      -- view — and became a hole the moment it did: Phase 3b reads the object
+      -- files, which contain the compiler's auxiliaries, so exempting them
+      -- here would leave the accounting identity permanently short and force
+      -- it to be "explained" by a constant. A residual that has to be
+      -- explained away is the shape of the fudge term four-fork data refuted
+      -- in the ed25519 repos.
+      | none => some "Proofs.Audit"
     match scope with
     | none => pure ()
     | some where_ =>
       nEnum := nEnum + 1
       if manifestNames.contains nm then certsSeen := certsSeen.push nm
+      -- THE ROW. Same shape as the corpus walks in the ed25519 repositories:
+      -- module, name, kind, cone. The originating module is part of the record
+      -- because two modules may legitimately declare the same name, and keyed
+      -- on name alone one would be covered by the other's entry.
+      let rowCone := (← collectAxioms nm).toList
+      let rowKind := kindOf ci
+      let rowStr := s!"{where_}|{nm}|{rowKind}|{String.intercalate "," ((sortNames rowCone).map toString)}"
+      if where_ == "Proofs.Audit" then
+        drvRows := drvRows.push s!"DRV|{rowStr}"
+      else
+        invRows := invRows.push s!"INV|{rowStr}"
       match ci with
       | .axiomInfo _ =>
           -- the five oracle axioms live in gen/ (Phase-0 pinned); an axiom
@@ -232,6 +268,13 @@ elab "auditCones" : command => do
   -- check.sh prints the certificate list it gets from HERE, not from a hand-kept
   -- bash array (drill finding: the one authoritative claim string was the one
   -- thing nothing bound — adding a name to it printed a cert that never existed).
+  -- The two walks, emitted for check.sh to diff against committed allowlists in
+  -- BOTH directions. A trailer per walk, so a truncated or crashed emission can
+  -- never pass as an empty diff.
+  for r in invRows.qsort (· < ·) do IO.println r
+  IO.println s!"INV-COUNT|{invRows.size}"
+  for r in drvRows.qsort (· < ·) do IO.println r
+  IO.println s!"DRV-COUNT|{drvRows.size}"
   logInfo s!"CERTIFICATES: {String.intercalate " " (manifestNames.map toString)}"
   logInfo s!"exact-cone audit PASSED: {manifest.length} certificates (cones + statements), {specs.toList.length} specification constants pinned, {nEnum} declarations enumerated clean"
 

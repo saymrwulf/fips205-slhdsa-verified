@@ -1,0 +1,39 @@
+# driver-allowlist.txt — the AUDIT INSTRUMENT's own declaration surface,
+# with cones, gated by the same implementation that gates the corpus.
+# Round-8 review (Claude): enumeration is not audit. Rows carrying no cone,
+# covered by no allowlist, are counted and then examined by nothing.
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1._sparseCasesOn_3|def|propext
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1._sparseCasesOn_6|def|propext
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_11|def|
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_13|def|propext
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_15|def|
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_17|def|
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_19|def|Classical.choice,Quot.sound,propext
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_1|def|
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_21|def|
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_3|def|propext
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_6|def|propext
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1.match_9|def|
+DRV|Proofs.Audit|SlhVerify.Audit._aux_Proofs_Audit___elabRules_SlhVerify_Audit_commandAuditCones_1|def|Classical.choice,Quot.sound,propext
+DRV|Proofs.Audit|SlhVerify.Audit.allowedBoundary|def|
+DRV|Proofs.Audit|SlhVerify.Audit.certModules|def|
+DRV|Proofs.Audit|SlhVerify.Audit.closureOf._sparseCasesOn_1|def|propext
+DRV|Proofs.Audit|SlhVerify.Audit.closureOf._unsafe_rec|def|Classical.choice,Quot.sound,propext
+DRV|Proofs.Audit|SlhVerify.Audit.closureOf.match_1|def|propext
+DRV|Proofs.Audit|SlhVerify.Audit.closureOf.match_4|def|
+DRV|Proofs.Audit|SlhVerify.Audit.closureOf|opaque|Classical.choice,Quot.sound,propext
+DRV|Proofs.Audit|SlhVerify.Audit.commandAuditCones|def|
+DRV|Proofs.Audit|SlhVerify.Audit.isSpecConst.match_1|def|
+DRV|Proofs.Audit|SlhVerify.Audit.isSpecConst|def|Classical.choice,Quot.sound,propext
+DRV|Proofs.Audit|SlhVerify.Audit.kernel3|def|
+DRV|Proofs.Audit|SlhVerify.Audit.kindOf.match_1|def|
+DRV|Proofs.Audit|SlhVerify.Audit.kindOf|def|
+DRV|Proofs.Audit|SlhVerify.Audit.manifest|def|
+DRV|Proofs.Audit|SlhVerify.Audit.normWs|def|Classical.choice,Quot.sound,propext
+DRV|Proofs.Audit|SlhVerify.Audit.oracleF|def|
+DRV|Proofs.Audit|SlhVerify.Audit.oracleHMsg|def|
+DRV|Proofs.Audit|SlhVerify.Audit.oracleH|def|
+DRV|Proofs.Audit|SlhVerify.Audit.oracleTLen|def|
+DRV|Proofs.Audit|SlhVerify.Audit.oracleTL|def|
+DRV|Proofs.Audit|SlhVerify.Audit.ppAll|def|Classical.choice,Quot.sound,propext
+DRV|Proofs.Audit|SlhVerify.Audit.sortNames|def|Classical.choice,Quot.sound,propext

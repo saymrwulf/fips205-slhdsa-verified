@@ -270,6 +270,8 @@ fi
 echo "  ✓ $(grep -oF 'exact-cone audit PASSED' <<<"$AUD_OUT" | head -1)"
 echo "  ✓ audit-manifest digest matches (sha256 ${EXPECTED_AUDIT_SHA256:0:16}…)"
 
+
+
 # ── Phase 3b: kernel-side axiom-declaration gate ────────────────────────────
 # WHY A SECOND GATE ON THE SAME PROPERTY. Phase 3's audit runs INSIDE Lean and
 # reads `env.constants` after the imports — an ELABORATION-TIME view. That view
@@ -320,6 +322,12 @@ run_cmd do
     let (mod, _) ← readModuleData p
     for ci in mod.constants do
       nConst := nConst + 1
+      -- The kernel's OWN list of names, for the accounting identity in check.sh:
+      -- every constant the kernel holds must be accounted for by one of the two
+      -- environment walks. Emitted rather than counted, because a count cannot
+      -- say WHICH constant is unaccounted for — the residual would then have to
+      -- be "explained", which is how a fudge term gets born.
+      IO.println s!"KERNEL-NAME|{ci.name}"
       if ci matches .axiomInfo _ then
         errs := errs.push s!"  {name}: {ci.name}"
   unless errs.isEmpty do
@@ -336,17 +344,64 @@ GATE_RC=0
 # The temp source AND its artifact are removed on BOTH paths: under `set -e` a
 # bare rm after the call never runs when the gate goes red, which is how the
 # ed25519 repos once accumulated 101 orphan .olean files.
+GATELOG=$(mktemp /tmp/slh-kernlog-XXXX.log)
 ( cd "$AENEAS_LEAN" && lake env bash -c "
   set -euo pipefail
   cd '$HERE/gen' && export LEAN_PATH=\"\$LEAN_PATH:\$PWD:$HERE\"
   cd '$HERE'
   LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' '$GATE'
-" ) || GATE_RC=$?
+" ) 2>&1 | tee "$GATELOG" || GATE_RC=${PIPESTATUS[0]}
 rm -f "$GATE" "${GATE%.lean}.olean"
 if [ "$GATE_RC" -ne 0 ]; then
   echo "AXIOM SMUGGLING GATE FAILED (kernel-side) — see the error above."
   exit 1
 fi
+
+# ── Phase 3c: declaration coverage, both walks, both directions ─────────────
+# Phase 3 proves each certificate's cone is exact and that no declaration in
+# scope carries a disallowed axiom. It does NOT pin WHICH declarations exist:
+# a new one that happens to be clean, or a silently vanished one, both pass it.
+# These two gates diff the walks against committed allowlists in both
+# directions — UNCLASSIFIED for something in the environment and not the list,
+# STALE for the reverse — using the same implementation the ed25519 repositories
+# use for their corpus, with a tag for each surface.
+AUDROWS=$(mktemp /tmp/slh-audrows-XXXX.log)
+printf '%s\n' "$AUD_OUT" > "$AUDROWS"
+COVFAIL=0
+"$HERE/inventory_gate.sh" "$AUDROWS" "$HERE/inventory-allowlist.txt" INV || COVFAIL=1
+"$HERE/inventory_gate.sh" "$AUDROWS" "$HERE/driver-allowlist.txt"    DRV || COVFAIL=1
+
+# ── THE ACCOUNTING IDENTITY ─────────────────────────────────────────────────
+# Round-8 review (Claude, `accounting-certifies-enumeration`). The two walks
+# above are ENVIRONMENT views, taken while Audit.lean elaborates. Phase 3b reads
+# the OBJECT FILES. Every constant the kernel holds must be accounted for by one
+# of the two walks — otherwise a declaration exists that the button compiled,
+# the kernel sees, and no allowlist describes.
+#
+# SET CONTAINMENT, never arithmetic. An earlier version of this identity in the
+# ed25519 repositories carried a "+ N_DRIVERS" correction term fitted from one
+# repository; four-fork data refuted it (the residual was 2 regardless of driver
+# count). A residual that has to be explained is a fudge term waiting to absorb
+# the next real finding, so this compares NAMES and prints the ones missing.
+KERN=$(mktemp /tmp/slh-kern-XXXX.txt); ACCT=$(mktemp /tmp/slh-acct-XXXX.txt)
+LC_ALL=C grep '^KERNEL-NAME|' "$GATELOG" | cut -d'|' -f2 | LC_ALL=C sort -u > "$KERN"
+{ LC_ALL=C awk -F'|' '/^INV\|/{print $3}' "$HERE/inventory-allowlist.txt"
+  LC_ALL=C awk -F'|' '/^DRV\|/{print $3}' "$HERE/driver-allowlist.txt"
+} | LC_ALL=C sort -u > "$ACCT"
+UNACCOUNTED=$(LC_ALL=C comm -23 "$KERN" "$ACCT")
+if [ ! -s "$KERN" ]; then
+  echo "  ACCOUNTING FAILED: the kernel gate reported no names — the scan was vacuous"
+  COVFAIL=1
+elif [ -n "$UNACCOUNTED" ]; then
+  echo "  ACCOUNTING FAILED: the kernel holds constants that neither walk accounts for:"
+  printf '%s\n' "$UNACCOUNTED" | head -20 | sed 's/^/    /'
+  COVFAIL=1
+else
+  echo "  accounting: every one of $(wc -l < "$KERN") kernel constants is covered by the corpus inventory or the instrument surface"
+fi
+rm -f "$AUDROWS" "$KERN" "$ACCT"
+[ "$COVFAIL" = 0 ] || { echo "COVERAGE FAILED"; exit 1; }
+rm -f "$GATELOG"
 
 
 echo
