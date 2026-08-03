@@ -30,6 +30,10 @@
 #             declaration made after the command that performs the walk is in
 #             the object file but not in the environment while the walk runs.
 #             It runs after Phase 3 because Proofs/Audit.lean is compiled there.
+#   Phase 3c— declaration coverage + the accounting identity: both walks diffed
+#             against committed allowlists in BOTH directions, and every
+#             constant the kernel holds must be accounted for by one of them.
+#             Set containment, never arithmetic.
 #
 #   What this button does NOT bind is stated in TRUSTED-BASE.md item 11: this
 #   script itself, the toolchain env, $AENEAS_HOME, and the Lean toolchain.

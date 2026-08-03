@@ -8,9 +8,9 @@ four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 ## STATUS: eleven certificates over the extracted verify model (external review rounds 1–6 applied)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the proofs
-compile, and the audit passes. It binds **six** things, each added because an
+compile, and the audit passes. It binds **seven** things, each added because an
 external reviewer *demonstrated* the button going green without it. Four are
-checked **inside Lean** by `verification/Proofs/Audit.lean`; the last two are
+checked **inside Lean** by `verification/Proofs/Audit.lean`; the last three are
 separate phases that deliberately do **not** rely on that file:
 
 - **axiom cones** — each certificate's cone is read from the kernel via
@@ -47,6 +47,21 @@ separate phases that deliberately do **not** rely on that file:
   axiom" and is telling the truth about what it could see. Verified here by
   planting `axiom cheat : ∀ (P : Prop), P` after the audit command — Phase 3
   passed it, Phase 3b rejected it.
+- **which declarations exist** (Phase 3c) — the checks above prove each
+  certificate's cone is exact and that nothing in scope carries a disallowed
+  axiom. They do not pin WHICH declarations exist: a new one that happens to be
+  clean, and a silently vanished one, both pass. `inventory-allowlist.txt` (265
+  rows) and `driver-allowlist.txt` (35 rows) pin the corpus and the audit
+  instrument's own surface as `module|name|kind|cone`, diffed in **both**
+  directions — UNCLASSIFIED for a declaration no row describes, STALE for a row
+  with no declaration behind it. The instrument surface carries cones because
+  enumeration is not audit: a claim planted in an instrument is counted and then
+  examined by nothing if its row has no cone and no allowlist covers it.
+  Finally the **accounting identity**, as set containment rather than
+  arithmetic: every constant the kernel holds must appear in one of the two
+  walks — `kernel 300 = corpus 265 + instrument 35`, residual none. A residual
+  that has to be explained is a fudge term waiting to absorb the next real
+  finding.
 
 What the button still does **not** bind is stated plainly in
 [TRUSTED-BASE.md](TRUSTED-BASE.md) item 11 — `check.sh` itself, the toolchain
