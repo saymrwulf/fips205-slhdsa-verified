@@ -22,14 +22,30 @@ proceeds and is part of every claim.
    model is trusted base.
 
    **What is now reproducible, and what is not.** Extraction is two steps:
-   `Rust --charon--> SlhVerify.llbc --aeneas--> gen/SlhVerify/*.lean`. The
-   `.llbc` is committed, so the SECOND step can be re-run by anyone with the
-   pinned Aeneas and this repository, and on 2026-08-03 doing so reproduced
-   `Types.lean` and `Funs.lean` **byte-identically**. The FIRST step still
-   requires charon, which no reviewer has yet had available. So: the
-   LLBC → Lean half is reproducible on demand; the Rust → LLBC half rests on
-   the author's attestation alone, and continues to do so until a third party
-   runs it. Do not read the first half as evidence for the second.
+   `Rust --charon--> SlhVerify.llbc --aeneas--> gen/SlhVerify/*.lean`.
+
+   The `.llbc` is committed **as of 2026-08-03** and byte-pinned in
+   `generated_artifacts_sha256`, which `check.sh` Phase 0 now verifies. So the
+   SECOND step can be re-run by anyone with the pinned Aeneas and this
+   repository, and doing so reproduces `Types.lean` and `Funs.lean`
+   byte-identically.
+
+   THE FIRST STEP CANNOT BE. It requires charon, which no reviewer has yet had
+   available, and this repository ships no charon output anyone can check
+   against — the committed `.llbc` IS that output, so verifying it against
+   itself establishes nothing. What the committed `.llbc` gives a reader is
+   this and only this: the Lean model in `gen/` is the faithful Aeneas image of
+   THAT intermediate. Whether that intermediate is the faithful Charon image of
+   `fips205-source@a3ce8e8` rests on the author's attestation alone, and
+   continues to do so until a third party runs Charon. **Do not read the second
+   half as evidence for the first.**
+
+   This paragraph previously said the `.llbc` was committed while `.gitignore`
+   excluded it — round-9 review (GPT-5.6) — so the claim was false for every
+   reader and true only on the author's disk. Chasing it found the larger
+   defect: `generated_artifacts_sha256` was read by nothing, and its `.llbc`
+   entry had been stale since review round 2, naming an artifact that did not
+   produce the committed model.
 
 3b. **The correspondence check is textual, not a Lean query.** Phase 0d parses
    `FunsExternal_Template.lean` and the hand-written model as SOURCE TEXT. It

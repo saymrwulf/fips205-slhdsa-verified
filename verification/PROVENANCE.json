@@ -28,7 +28,7 @@
     "aeneas": "aeneas -backend lean -split-files -subdir SlhVerify -dest gen SlhVerify.llbc"
   },
   "generated_artifacts_sha256": {
-    "SlhVerify.llbc": "d8ec0b00593eee1778bc4cc0cc1801fb6415bb294425f01384434849c6443f58",
+    "SlhVerify.llbc": "69666ddc43a4d5e02ca8eaa64eb740f8849eac64e0cd9df76506ab4f68f2af55",
     "gen/SlhVerify/Types.lean": "db720b4a30f512e6048212a472e6853b24931a8121cb94c4cf7e6489754d6384",
     "gen/SlhVerify/Funs.lean": "7b7de55fd0206142f2678a079a6ed4462292356bc7de08ecd55cac0c76a1da9f"
   },

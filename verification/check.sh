@@ -110,6 +110,16 @@ import json, sys, hashlib, os
 prov = json.load(open(sys.argv[1])); here = sys.argv[2]
 files = {k: v for k, v in prov.get("model_integrity_sha256", {}).items() if not k.startswith("_")}
 files.update({k: v for k, v in prov.get("harness_integrity_sha256", {}).items() if not k.startswith("_")})
+# generated_artifacts_sha256 WAS NEVER READ BY THIS SCRIPT. Round-9 review
+# (GPT-5.6) found TRUSTED-BASE claiming the LLBC was committed while
+# .gitignore excluded it; chasing that turned up the larger defect: this whole
+# pin block was decorative. Its Types.lean/Funs.lean entries matched only
+# because those files are ALSO pinned in model_integrity_sha256, which is
+# checked. The LLBC entry — the one nothing else covered — had been stale since
+# review round 2 (522d8b2): the source was re-extracted, the model files and
+# their pins were updated, and this pin was not. A pin nothing verifies drifts,
+# and nobody notices. It is verified here now.
+files.update({k: v for k, v in prov.get("generated_artifacts_sha256", {}).items() if not k.startswith("_")})
 if not files:
     print("  no integrity map in PROVENANCE.json (fail-closed)"); sys.exit(1)
 bad = 0

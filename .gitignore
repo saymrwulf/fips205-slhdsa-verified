@@ -4,4 +4,7 @@ target/
 # *_Template.lean is NO LONGER ignored: it is Aeneas's own statement of what
 # the extraction needs from outside, and it is the only artifact against which
 # "does the model ANSWER the extraction" can be asked. Committed and pinned.
-SlhVerify.llbc
+# SlhVerify.llbc is NO LONGER ignored. It is the intermediate Charon produces
+# and Aeneas consumes, and committing it is what makes the LLBC->Lean half of
+# extraction independently re-runnable. Round-9 review (GPT-5.6) found
+# TRUSTED-BASE claiming it was committed while .gitignore excluded it.

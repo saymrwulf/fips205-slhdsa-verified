@@ -360,7 +360,10 @@ gracefully**: when `systemd-run` is unavailable it falls back to Lean's own
 `-M` cap, so the button runs on a stock Linux box without cgroup support — an
 external reviewer has run it green that way. Note also that the *empirical
 bridge* (`cargo test` in the snapshot repo) needs no Lean toolchain at all and
-runs on stable Rust. Extraction is reproducible: the
+runs on stable Rust. Extraction is reproducible **in its second stage only**
+(see TRUSTED-BASE item 3: the committed `.llbc` lets anyone re-run Aeneas and
+reproduce the model byte-identically; re-running Charon against the Rust
+requires charon and has never been done by anyone but the author): the
 full pin set (source commit, Charon/Aeneas commits + toolchain channel, Lean
 and OCaml versions) is in [verification/PROVENANCE.json](verification/PROVENANCE.json);
 `verification/extract.sh` refuses to run against a wrong-commit or dirty
