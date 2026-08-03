@@ -215,9 +215,13 @@ same boundary.
   deviation from upstream is the removal of CI workflows (documented in
   that commit); the Aeneas-compat and de-plumbing patches then landed as
   transparent, individually-justified commits on top — never upstream.
-  The current snapshot head is **`797b4ef`** (the round-2 reproducibility
-  commit — committed `Cargo.lock` + pinned `rust-toolchain.toml` — on top of
-  de-plumbing round 2, `bea1051`); the model in this repo is extracted from
+  The current snapshot head is **`a3ce8e8`** — the NIST ACVP SHA2-128s sigVer
+  vectors plus an expanded differential bridge. That commit is TEST-ONLY: no
+  verify-path function changed, and re-running `extract.sh` against it
+  reproduces the two Aeneas-generated model files byte-identically. Its
+  lineage is `bea1051` (de-plumbing round 2) → `797b4ef` (the round-2
+  reproducibility commit: committed `Cargo.lock` + pinned
+  `rust-toolchain.toml`) → `a3ce8e8`; the model in this repo is extracted from
   it, and `verification/extract.sh` refuses any other commit. **No
   affiliation with, and no changes proposed to, the upstream project.**
 - Parameter set: **SLH-DSA-SHA2-128s** first (the small-signature profile
@@ -292,7 +296,7 @@ this repository was created:
   one the differential test compares against — is itself patched relative to
   upstream `30bac08`. `src/wots.rs` was never modified by any patch commit (an
   earlier revision of this README wrongly named it). See the snapshot history
-  at head `797b4ef` and TRUSTED-BASE.md item 7.
+  at head `a3ce8e8` and TRUSTED-BASE.md item 7.
 
 ## What is claimed (the button is green)
 

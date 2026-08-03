@@ -1,5 +1,15 @@
 # Recorded clean run — check.sh + independent cone dump
 
+> **HISTORICAL RECORD — read the pin below, not as the current one.** This
+> captures a run that really happened on 2026-07-24 against fips205-source
+> `797b4ef`. The CURRENT machine-enforced source pin is `a3ce8e8` (see
+> PROVENANCE.json). The revision named throughout this file is deliberately
+> left as it was: this is a record of what ran, and editing the identity of a
+> past run to match today's pin would be falsifying the record rather than
+> correcting it. Round-8 review (GPT-5.6) flagged that the pin appeared in no
+> markdown file; the fix is to name it here and correct the CLAIMS elsewhere.
+
+
 External review round 2 asked for a recorded clean run at the current pin
 by a party with the toolchain, so a reviewer who cannot run Lean has current
 evidence. Captured 2026-07-24. Pins are in [PROVENANCE.json](PROVENANCE.json).
@@ -142,14 +152,146 @@ Certificates proven: fips205.chain_free_loop_eq fips205.wots_loop1_eq fips205.xm
         hand-maintained TypesExternal.lean / FunsExternal.lean are
         NOT overwritten once they exist)
 [[92mInfo[39m ] Imported: SlhVerify.llbc
-[?25lApplied prepasses:  [------------------------------------------------]   0/142 ⠋Applied prepasses:  [------------------------------------------------]   1/142 ⠋Applied prepasses:  [###---------------------------------------------]  11/142 ⠋Applied prepasses:  [#################-------------------------------]  52/142 ⠙Applied prepasses:  [########################################--------] 120/142 ⠙Applied prepasses:  [################################################] 142/142 ✔️
-[?25h[?25lTranslated globals:  [-------------------------------------------------]  0/10 ⠋Translated globals:  [#################################################] 10/10 ✔️
-[?25h[?25lTranslated opaque functions:  [----------------------------------------]  0/76 ⠋Translated opaque functions:  [########################################] 76/76 ✔️
-[?25h[?25lTranslated transparent functions:  [-----------------------------------]  0/42 ⠋Translated transparent functions:  [-----------------------------------]  1/42 ⠙Translated transparent functions:  [#######----------------------------]  9/42 ⠹Translated transparent functions:  [########---------------------------] 10/42 ⠹Translated transparent functions:  [##########-------------------------] 12/42 ⠹Translated transparent functions:  [##########-------------------------] 13/42 ⠹Translated transparent functions:  [###########------------------------] 14/42 ⠸Translated transparent functions:  [############-----------------------] 15/42 ⠸Translated transparent functions:  [##############---------------------] 17/42 ⠸Translated transparent functions:  [###############--------------------] 19/42 ⠸Translated transparent functions:  [################-------------------] 20/42 ⠼Translated transparent functions:  [##################-----------------] 22/42 ⠼Translated transparent functions:  [####################---------------] 24/42 ⠼Translated transparent functions:  [#####################--------------] 26/42 ⠴Translated transparent functions:  [######################-------------] 27/42 ⠴Translated transparent functions:  [#######################------------] 28/42 ⠦Translated transparent functions:  [########################-----------] 29/42 ⠦Translated transparent functions:  [#########################----------] 30/42 ⠦Translated transparent functions:  [#########################----------] 31/42 ⠧Translated transparent functions:  [###########################--------] 33/42 ⠇Translated transparent functions:  [#############################------] 35/42 ⠏Translated transparent functions:  [##############################-----] 36/42 ⠏Translated transparent functions:  [##############################-----] 37/42 ⠋Translated transparent functions:  [###############################----] 38/42 ⠙Translated transparent functions:  [################################---] 39/42 ⠹Translated transparent functions:  [#################################--] 40/42 ⠸Translated transparent functions:  [##################################-] 41/42 ⠸Translated transparent functions:  [###################################] 42/42 ⠼Translated transparent functions:  [###################################] 42/42 ✔️
-[?25h[?25lTranslated trait declarations:  [--------------------------------------]  0/33 ⠋Translated trait declarations:  [##############------------------------] 13/33 ✔️
-[?25h[?25lTranslated trait impls:  [---------------------------------------------]  0/50 ⠋Translated trait impls:  [######################-----------------------] 25/50 ✔️
-[?25h[?25lPost-processed translated opaque functions:  [-------------------------]  0/76 ⠋Post-processed translated opaque functions:  [-------------------------]  1/76 ⠙Post-processed translated opaque functions:  [#########################] 76/76 ✔️
-[?25h[?25lPost-processed translated transparent functions:  [--------------------]  0/42 ⠋Post-processed translated transparent functions:  [--------------------]  1/42 ⠙Post-processed translated transparent functions:  [###-----------------]  7/42 ⠙Post-processed translated transparent functions:  [####----------------]  9/42 ⠙Post-processed translated transparent functions:  [####----------------] 10/42 ⠹Post-processed translated transparent functions:  [#####---------------] 11/42 ⠹Post-processed translated transparent functions:  [#####---------------] 12/42 ⠸Post-processed translated transparent functions:  [######--------------] 13/42 ⠸Post-processed translated transparent functions:  [######--------------] 14/42 ⠸Post-processed translated transparent functions:  [#######-------------] 15/42 ⠼Post-processed translated transparent functions:  [#######-------------] 16/42 ⠼Post-processed translated transparent functions:  [########------------] 17/42 ⠼Post-processed translated transparent functions:  [#########-----------] 19/42 ⠴Post-processed translated transparent functions:  [#########-----------] 20/42 ⠴Post-processed translated transparent functions:  [##########----------] 21/42 ⠴Post-processed translated transparent functions:  [##########----------] 22/42 ⠦Post-processed translated transparent functions:  [##########----------] 23/42 ⠦Post-processed translated transparent functions:  [###########---------] 25/42 ⠦Post-processed translated transparent functions:  [############--------] 26/42 ⠧Post-processed translated transparent functions:  [############--------] 27/42 ⠧Post-processed translated transparent functions:  [#############-------] 28/42 ⠧Post-processed translated transparent functions:  [##############------] 30/42 ⠇Post-processed translated transparent functions:  [###############-----] 32/42 ⠇Post-processed translated transparent functions:  [###############-----] 33/42 ⠏Post-processed translated transparent functions:  [################----] 34/42 ⠏Post-processed translated transparent functions:  [#################---] 37/42 ⠋Post-processed translated transparent functions:  [##################--] 38/42 ⠋Post-processed translated transparent functions:  [##################--] 39/42 ⠙Post-processed translated transparent functions:  [###################-] 40/42 ⠹Post-processed translated transparent functions:  [###################-] 41/42 ⠸Post-processed translated transparent functions:  [####################] 42/42 ⠼Post-processed translated transparent functions:  [####################] 42/42 ✔️
+[?25lApplied prepasses:  [------------------------------------------------]   0/142 ⠋
+
+Applied prepasses:  [------------------------------------------------]   1/142 ⠋
+
+Applied prepasses:  [###---------------------------------------------]  11/142 ⠋
+
+Applied prepasses:  [#################-------------------------------]  52/142 ⠙
+
+Applied prepasses:  [########################################--------] 120/142 ⠙
+Applied prepasses:  [################################################] 142/142 ✔️
+[?25h[?25lTranslated globals:  [-------------------------------------------------]  0/10 ⠋
+Translated globals:  [#################################################] 10/10 ✔️
+[?25h[?25lTranslated opaque functions:  [----------------------------------------]  0/76 ⠋
+Translated opaque functions:  [########################################] 76/76 ✔️
+[?25h[?25lTranslated transparent functions:  [-----------------------------------]  0/42 ⠋
+
+Translated transparent functions:  [-----------------------------------]  1/42 ⠙
+
+Translated transparent functions:  [#######----------------------------]  9/42 ⠹
+
+Translated transparent functions:  [########---------------------------] 10/42 ⠹
+
+Translated transparent functions:  [##########-------------------------] 12/42 ⠹
+
+Translated transparent functions:  [##########-------------------------] 13/42 ⠹
+
+Translated transparent functions:  [###########------------------------] 14/42 ⠸
+
+Translated transparent functions:  [############-----------------------] 15/42 ⠸
+
+Translated transparent functions:  [##############---------------------] 17/42 ⠸
+
+Translated transparent functions:  [###############--------------------] 19/42 ⠸
+
+Translated transparent functions:  [################-------------------] 20/42 ⠼
+
+Translated transparent functions:  [##################-----------------] 22/42 ⠼
+
+Translated transparent functions:  [####################---------------] 24/42 ⠼
+
+Translated transparent functions:  [#####################--------------] 26/42 ⠴
+
+Translated transparent functions:  [######################-------------] 27/42 ⠴
+
+Translated transparent functions:  [#######################------------] 28/42 ⠦
+
+Translated transparent functions:  [########################-----------] 29/42 ⠦
+
+Translated transparent functions:  [#########################----------] 30/42 ⠦
+
+Translated transparent functions:  [#########################----------] 31/42 ⠧
+
+Translated transparent functions:  [###########################--------] 33/42 ⠇
+
+Translated transparent functions:  [#############################------] 35/42 ⠏
+
+Translated transparent functions:  [##############################-----] 36/42 ⠏
+
+Translated transparent functions:  [##############################-----] 37/42 ⠋
+
+Translated transparent functions:  [###############################----] 38/42 ⠙
+
+Translated transparent functions:  [################################---] 39/42 ⠹
+
+Translated transparent functions:  [#################################--] 40/42 ⠸
+
+Translated transparent functions:  [##################################-] 41/42 ⠸
+
+Translated transparent functions:  [###################################] 42/42 ⠼
+Translated transparent functions:  [###################################] 42/42 ✔️
+[?25h[?25lTranslated trait declarations:  [--------------------------------------]  0/33 ⠋
+Translated trait declarations:  [##############------------------------] 13/33 ✔️
+[?25h[?25lTranslated trait impls:  [---------------------------------------------]  0/50 ⠋
+Translated trait impls:  [######################-----------------------] 25/50 ✔️
+[?25h[?25lPost-processed translated opaque functions:  [-------------------------]  0/76 ⠋
+
+Post-processed translated opaque functions:  [-------------------------]  1/76 ⠙
+Post-processed translated opaque functions:  [#########################] 76/76 ✔️
+[?25h[?25lPost-processed translated transparent functions:  [--------------------]  0/42 ⠋
+
+Post-processed translated transparent functions:  [--------------------]  1/42 ⠙
+
+Post-processed translated transparent functions:  [###-----------------]  7/42 ⠙
+
+Post-processed translated transparent functions:  [####----------------]  9/42 ⠙
+
+Post-processed translated transparent functions:  [####----------------] 10/42 ⠹
+
+Post-processed translated transparent functions:  [#####---------------] 11/42 ⠹
+
+Post-processed translated transparent functions:  [#####---------------] 12/42 ⠸
+
+Post-processed translated transparent functions:  [######--------------] 13/42 ⠸
+
+Post-processed translated transparent functions:  [######--------------] 14/42 ⠸
+
+Post-processed translated transparent functions:  [#######-------------] 15/42 ⠼
+
+Post-processed translated transparent functions:  [#######-------------] 16/42 ⠼
+
+Post-processed translated transparent functions:  [########------------] 17/42 ⠼
+
+Post-processed translated transparent functions:  [#########-----------] 19/42 ⠴
+
+Post-processed translated transparent functions:  [#########-----------] 20/42 ⠴
+
+Post-processed translated transparent functions:  [##########----------] 21/42 ⠴
+
+Post-processed translated transparent functions:  [##########----------] 22/42 ⠦
+
+Post-processed translated transparent functions:  [##########----------] 23/42 ⠦
+
+Post-processed translated transparent functions:  [###########---------] 25/42 ⠦
+
+Post-processed translated transparent functions:  [############--------] 26/42 ⠧
+
+Post-processed translated transparent functions:  [############--------] 27/42 ⠧
+
+Post-processed translated transparent functions:  [#############-------] 28/42 ⠧
+
+Post-processed translated transparent functions:  [##############------] 30/42 ⠇
+
+Post-processed translated transparent functions:  [###############-----] 32/42 ⠇
+
+Post-processed translated transparent functions:  [###############-----] 33/42 ⠏
+
+Post-processed translated transparent functions:  [################----] 34/42 ⠏
+
+Post-processed translated transparent functions:  [#################---] 37/42 ⠋
+
+Post-processed translated transparent functions:  [##################--] 38/42 ⠋
+
+Post-processed translated transparent functions:  [##################--] 39/42 ⠙
+
+Post-processed translated transparent functions:  [###################-] 40/42 ⠹
+
+Post-processed translated transparent functions:  [###################-] 41/42 ⠸
+
+Post-processed translated transparent functions:  [####################] 42/42 ⠼
+Post-processed translated transparent functions:  [####################] 42/42 ✔️
 [?25h[[92mInfo[39m ] Generated: gen/SlhVerify/Types.lean
 [[92mInfo[39m ] Generated: gen/SlhVerify/FunsExternal_Template.lean
 [[92mInfo[39m ] Generated: gen/SlhVerify/Funs.lean

@@ -31,7 +31,7 @@ proceeds and is part of every claim.
 7. **Aeneas-compat + de-plumbing patch surface.** The fn-pointer-to-named-
    oracle rewrite in `fips205-source` (phase 1) and the two de-plumbing
    rounds (index-loop rewrites of the iterator adapters on the verify path,
-   de-plumbing round 2 at `bea1051`; current snapshot head `3153988`) are
+   de-plumbing round 2 at `bea1051`; current snapshot head `a3ce8e8`) are
    part of the verified surface: the
    certificates cover the *patched* verify path, and the patch commits are
    the auditable delta from upstream `30bac08`. Each rewrite's equivalence
