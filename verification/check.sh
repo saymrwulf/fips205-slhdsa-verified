@@ -257,6 +257,85 @@ fi
 echo "  ✓ $(grep -oF 'exact-cone audit PASSED' <<<"$AUD_OUT" | head -1)"
 echo "  ✓ audit-manifest digest matches (sha256 ${EXPECTED_AUDIT_SHA256:0:16}…)"
 
+# ── Phase 3b: kernel-side axiom-declaration gate ────────────────────────────
+# WHY A SECOND GATE ON THE SAME PROPERTY. Phase 3's audit runs INSIDE Lean and
+# reads `env.constants` after the imports — an ELABORATION-TIME view. That view
+# has a documented blind spot, demonstrated on the accumulator during round-7
+# review and reproduced there: anything declared AFTER the command that performs
+# the walk exists in the compiled object file but is not in the environment
+# while the walk runs. The walker reports "no axiom, no claim" and is telling
+# the truth about what it could see.
+#
+# This phase reads the OBJECT FILES instead, via `readModuleData`, which is a
+# different view of the same modules and has no such ordering. It is deliberately
+# a second, independently-implemented gate on the property that matters most:
+# that nothing in the proof corpus DECLARES AN AXIOM, whatever its indentation,
+# attributes, or position in the file.
+#
+# Membership, not a glob: the manifest below is this script's PROOFS array plus
+# the audit driver, so a module the button never compiled cannot be silently
+# demanded, and a module it did compile cannot be silently skipped.
+#
+# IT RUNS AFTER PHASE 3, and that placement is load-bearing rather than
+# cosmetic. Phase 2 compiles the eight certificate modules; Proofs/Audit.lean is
+# only compiled by Phase 3. Placed at 2b the gate demanded an artifact that did
+# not exist yet and died with COVERAGE — correctly, since a gate that skipped
+# the missing module would have been vacuous exactly where it matters. The
+# audit driver is the one module whose own declarations no other gate examines,
+# so covering it is the point, and covering it requires waiting for it.
+echo "=== Phase 3b: kernel-side axiom-declaration gate ==="
+KERN_MODS=$(printf '"%s.olean", ' "${PROOFS[@]}" "Audit" | sed 's/, $//')
+GATE=$(mktemp "$HERE/.axgate-XXXX.lean")
+{
+  echo "import Lean"
+  echo "open Lean"
+  echo "def expected : List String := [$KERN_MODS]"
+  cat <<'LEANGATE'
+
+run_cmd do
+  let dir : System.FilePath := "Proofs"
+  let mut errs : Array String := #[]
+  let mut nMod := 0
+  let mut nConst := 0
+  for name in expected do
+    let p := dir / name
+    -- FAIL CLOSED ON ABSENCE: a manifest module whose artifact is missing makes
+    -- this gate vacuous for that module. An error, never a skip.
+    unless (← p.pathExists) do
+      throwError "COVERAGE: {name} is in the compile manifest but its artifact is absent"
+    nMod := nMod + 1
+    let (mod, _) ← readModuleData p
+    for ci in mod.constants do
+      nConst := nConst + 1
+      if ci matches .axiomInfo _ then
+        errs := errs.push s!"  {name}: {ci.name}"
+  unless errs.isEmpty do
+    throwError "AXIOM DECLARED under Proofs/ (kernel-side gate):\n{String.intercalate "\n" errs.toList}"
+  -- FAIL CLOSED ON EMPTINESS: an empty scan and a clean scan must not share a
+  -- code path, or a gate that read nothing would report the same as one that
+  -- read everything and found nothing wrong.
+  if nConst == 0 then
+    throwError "KERNEL GATE VACUOUS: read {nMod} module(s) and saw no declarations at all"
+  logInfo s!"  kernel confirms: {nConst} declarations across {nMod} compiled modules, none is an axiom"
+LEANGATE
+} > "$GATE"
+GATE_RC=0
+# The temp source AND its artifact are removed on BOTH paths: under `set -e` a
+# bare rm after the call never runs when the gate goes red, which is how the
+# ed25519 repos once accumulated 101 orphan .olean files.
+( cd "$AENEAS_LEAN" && lake env bash -c "
+  set -euo pipefail
+  cd '$HERE/gen' && export LEAN_PATH=\"\$LEAN_PATH:\$PWD:$HERE\"
+  cd '$HERE'
+  LEAN_TIMEOUT=$TIMEOUT LEAN_MEM_MB=$MEM '$HERE/lean-guard' '$GATE'
+" ) || GATE_RC=$?
+rm -f "$GATE" "${GATE%.lean}.olean"
+if [ "$GATE_RC" -ne 0 ]; then
+  echo "AXIOM SMUGGLING GATE FAILED (kernel-side) — see the error above."
+  exit 1
+fi
+
+
 echo
 echo "ALL GREEN — model compiles, proofs compile, and every certificate cone"
 echo "equals EXACTLY the three kernel axioms plus its documented SHA-2 oracles."
