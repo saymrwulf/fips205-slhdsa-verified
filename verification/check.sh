@@ -341,7 +341,7 @@ run_cmd do
       -- environment walks. Emitted rather than counted, because a count cannot
       -- say WHICH constant is unaccounted for — the residual would then have to
       -- be "explained", which is how a fudge term gets born.
-      IO.println s!"KERNEL-NAME|{ci.name}"
+      IO.println s!"KERNEL-NAME|{"Proofs." ++ (name.dropRight 6)}|{ci.name}"
       if ci matches .axiomInfo _ then
         errs := errs.push s!"  {name}: {ci.name}"
   unless errs.isEmpty do
@@ -398,10 +398,44 @@ COVFAIL=0
 # count). A residual that has to be explained is a fudge term waiting to absorb
 # the next real finding, so this compares NAMES and prints the ones missing.
 KERN=$(mktemp /tmp/slh-kern-XXXX.txt); ACCT=$(mktemp /tmp/slh-acct-XXXX.txt)
-LC_ALL=C grep '^KERNEL-NAME|' "$GATELOG" | cut -d'|' -f2 | LC_ALL=C sort -u > "$KERN"
+LC_ALL=C grep '^KERNEL-NAME|' "$GATELOG" | cut -d'|' -f3 | LC_ALL=C sort -u > "$KERN"
 { LC_ALL=C awk -F'|' '/^INV\|/{print $3}' "$HERE/inventory-allowlist.txt"
   LC_ALL=C awk -F'|' '/^DRV\|/{print $3}' "$HERE/driver-allowlist.txt"
 } | LC_ALL=C sort -u > "$ACCT"
+# TWO QUESTIONS, NOT ONE — round-9 review (Claude, N2), and the measurement
+# that answered it.
+#
+# The reviewer was right that keying this identity on NAME ALONE is weaker than
+# it reads: the allowlists are keyed module|name precisely because a name is not
+# unique, and this corpus holds two distinct CurveFieldProofs.zero_spec
+# declarations. So the pair is the right key — and keying on it revealed why the
+# straightforward fix is not available.
+#
+# 36 kernel pairs in this fork do not match a walk pair, and EVERY ONE of them
+# has its name accounted for under a DIFFERENT module. Example:
+#     kernel: Proofs.ConstSpecs|CurveFieldProofs.denote.eq_1
+#     kernel: Proofs.SubNegSpec|CurveFieldProofs.denote.eq_1   <- same name twice
+#     walk:   Proofs.SubNegSpec|CurveFieldProofs.denote.eq_1
+# That is GPT-5.6's round-7 F8: lazy equation lemmas are materialised PER
+# MODULE, so every module forcing an unfold gets its own copy in its object
+# file. The kernel reads object files and sees both copies; the environment walk
+# reads one merged environment and sees the name once. Both views are correct
+# about different things, so a pair mismatch here is not evidence of an
+# unexamined declaration, and suppressing it with an exception list would be the
+# fudge term four-fork data already refuted once.
+#
+# So the phase asks both questions and answers them separately:
+#   UNACCOUNTED   a name the kernel holds that NO walk mentions -> FAILS
+#   MULTI-MODULE  a pair that differs only in module attribution -> COUNTED and
+#                 REPORTED, never silently dropped, so the F8 phenomenon is
+#                 visible every run and a change in it is a change a reader sees
+KERN_PAIRS=$(mktemp /tmp/slh-kernpairs-XXXX.txt)
+ACCT_PAIRS=$(mktemp /tmp/slh-acctpairs-XXXX.txt)
+LC_ALL=C grep '^KERNEL-NAME|' "$GATELOG" | cut -d'|' -f2,3 | LC_ALL=C sort -u > "$KERN_PAIRS"
+{ LC_ALL=C awk -F'|' '/^INV\|/{print $2"|"$3}' "$HERE/inventory-allowlist.txt"
+  LC_ALL=C grep '^DRV|' "$AUDROWS" | cut -d'|' -f2,3
+} | LC_ALL=C sort -u > "$ACCT_PAIRS"
+MULTIMOD=$(LC_ALL=C comm -23 "$KERN_PAIRS" "$ACCT_PAIRS" | wc -l)
 UNACCOUNTED=$(LC_ALL=C comm -23 "$KERN" "$ACCT")
 if [ ! -s "$KERN" ]; then
   echo "  ACCOUNTING FAILED: the kernel gate reported no names — the scan was vacuous"
@@ -411,9 +445,10 @@ elif [ -n "$UNACCOUNTED" ]; then
   printf '%s\n' "$UNACCOUNTED" | head -20 | sed 's/^/    /'
   COVFAIL=1
 else
-  echo "  accounting: every one of $(wc -l < "$KERN") kernel constants is covered by the corpus inventory or the instrument surface"
+  echo "  accounting: every one of $(wc -l < "$KERN") kernel constant names is covered by the corpus inventory or the instrument surface"
+  echo "  multi-module: $MULTIMOD kernel record(s) differ from a walk only in module attribution (lazy equation lemmas materialised per module — GPT-5.6 round-7 F8, reported not suppressed)"
 fi
-rm -f "$AUDROWS" "$KERN" "$ACCT"
+rm -f "$AUDROWS" "$KERN" "$ACCT" "$KERN_PAIRS" "$ACCT_PAIRS"
 [ "$COVFAIL" = 0 ] || { echo "COVERAGE FAILED"; exit 1; }
 rm -f "$GATELOG"
 
