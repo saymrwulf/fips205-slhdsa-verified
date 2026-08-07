@@ -5,12 +5,12 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: eleven certificates over the extracted verify model (external review rounds 1–6 applied)
+## STATUS: eleven certificates over the extracted verify model (external review rounds 1–9 applied)
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the proofs
 compile, and the audit passes. It binds **seven** things, each added because an
-external reviewer *demonstrated* the button going green without it. Four are
-checked **inside Lean** by `verification/Proofs/Audit.lean`; the last three are
+external reviewer *demonstrated* the button going green without it. Three are
+checked **inside Lean** by `verification/Proofs/Audit.lean`; the other four are
 separate phases that deliberately do **not** rely on that file:
 
 - **axiom cones** — each certificate's cone is read from the kernel via
@@ -252,7 +252,9 @@ same boundary.
   vectors plus an expanded differential bridge. That commit is TEST-ONLY: no
   verify-path function changed, and re-running `extract.sh` against it
   reproduces the two Aeneas-generated model files byte-identically. Its
-  lineage is `bea1051` (de-plumbing round 2) → `797b4ef` (the round-2
+  lineage is `bea1051` (de-plumbing round 2) → `797b4ef` → `3153988` (NIST
+  ACVP vectors + randomized bridge) → `c945821` (vectors made re-derivable) →
+  `a3ce8e8` (extract-script wording); `797b4ef` is (the round-2
   reproducibility commit: committed `Cargo.lock` + pinned
   `rust-toolchain.toml`) → `a3ce8e8`; the model in this repo is extracted from
   it, and `verification/extract.sh` refuses any other commit. **No

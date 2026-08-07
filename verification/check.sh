@@ -5,8 +5,9 @@
 #
 #   Phase 0 — build hygiene + integrity: purge stale .olean (the verdict must
 #             depend on committed bytes, not untracked build state), forbid any
-#             .lean outside gen/ and Proofs/, and sha256-pin the four model files
-#             AND the compiler harness `lean-guard` to PROVENANCE.json.
+#             .lean outside gen/ and Proofs/, and sha256-pin the five model files,
+#             the committed SlhVerify.llbc, and the self-derived harness set
+#             (every executable here + Proofs/Audit.lean) to PROVENANCE.json.
 #   Phase 0d— template/model correspondence: every external Aeneas states the
 #             extracted Rust needs (FunsExternal_Template.lean, committed and
 #             pinned) must be answered by the hand-written model or by a real
