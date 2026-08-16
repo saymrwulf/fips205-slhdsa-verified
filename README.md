@@ -5,7 +5,7 @@ path**, extracted from a pure-Rust implementation into Lean 4 via
 Charon/Aeneas — the same pipeline, discipline, and honesty rules as the
 four ed25519 campaigns (`dalek/anza/risc0/betrusted-ed25519-verified`).
 
-## STATUS: eleven certificates over the extracted verify model (external review rounds 1–9 applied)
+## STATUS: eleven certificates over the extracted verify model (external review rounds 1–9 applied); attested in the Lean Transparency Log as leaf 18 (2026-08-08), the log's first post-quantum entry
 
 `verification/check.sh` is **green** (exit 0): the model compiles, the proofs
 compile, and the audit passes. It binds **seven** things, each added because an

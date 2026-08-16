@@ -7,7 +7,8 @@ consumer never sees.
 
 Nothing in this file is a decision to attest. The signing-key halt and the
 paper-appeal gate are the operator's, and an attest verdict from a reviewer is a
-technical input to that decision, not the decision.
+technical input to that decision, not the decision. (The attestation has since
+occurred: LTL leaf 18, 2026-08-08 — this file remains the conditions record.)
 
 ---
 
